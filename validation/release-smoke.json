@@ -1,0 +1,23 @@
+{
+  "validated": "2026-11-14T20:20:25.8827586+08:00",
+  "runs": [
+    {
+      "book": "灯塔手记",
+      "window": "个人书房",
+      "profile": "A",
+      "responding": true
+    },
+    {
+      "book": "灯塔手记",
+      "window": "个人书房",
+      "profile": "B",
+      "responding": true
+    },
+    {
+      "book": "灯塔手记",
+      "window": "个人书房",
+      "profile": "A",
+      "responding": true
+    }
+  ]
+}

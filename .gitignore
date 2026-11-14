@@ -1,0 +1,30 @@
+server/bin/
+server/obj/
+server/data/
+validation/work/
+*.user
+
+# Personal library and device state
+access-token.txt
+profile.json*
+*.sqlite*
+*.db
+*.db-wal
+*.db-shm
+*.epub
+.env
+
+# Downloaded third-party rules (recreated by validation/prepare-sources.ps1)
+/server/starter-sources.json
+/validation/yck-novel.json
+
+# Keep release instructions and launchers, exclude distributables and live data.
+/release/*
+!/release/windows-x64/
+!/release/v2-windows-x64/
+/release/*/*
+!/release/*/使用说明.md
+!/release/v2-windows-x64/Start-Reader.cmd
+!/release/v2-windows-x64/Start-Reader.ps1
+/validation/v2-release.log
+__pycache__/

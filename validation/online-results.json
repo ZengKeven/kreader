@@ -1,0 +1,60 @@
+[
+  {
+    "source": "古龙武侠（优+）",
+    "id": "3a44ff1af921ceb89852f14413b8e3df",
+    "query": "绝代双骄",
+    "date": "2026-11-14T02:14:32.2013240+08:00",
+    "passed": true,
+    "title": "第八十四章　意外之变",
+    "url": "https://m.gulongbbs.com/book/jdsj/19964.html",
+    "chapterCount": 60,
+    "samples": [
+      {
+        "sha256": "2BC543DCB6EC4426D2BF13450862C4907758DAB53321221BF03C2255B3AB1074",
+        "chapter": "第一章　名剑香花",
+        "chars": 6604,
+        "excerpt": "珠海《古龙作品集》PDF扫描版分享三千藏书奉江湖 ， 诚"
+      },
+      {
+        "sha256": "079106D31ECB5BED3BBA7F0C1619730969F66F5FADD322C1239A08B58BC4C1EC",
+        "chapter": "第二章　刀下遗孤",
+        "chars": 10212,
+        "excerpt": "珠海《古龙作品集》PDF扫描版分享三千藏书奉江湖 ， 诚"
+      }
+    ]
+  },
+  {
+    "source": "轻之文库（优+）",
+    "id": "70947d1adc1d6f44897272ce53d566bc",
+    "query": "幻想",
+    "date": "2026-11-14T02:14:33.2059461+08:00",
+    "passed": false,
+    "failure": "Response status code does not indicate success: 504 (Gateway Timeout).",
+    "detail": "\r\n{\r\n  \"error\": \"The request was canceled due to the configured HttpClient.Timeout of 18 seconds elapsing.\"\r\n}",
+    "stage": "搜索"
+  },
+  {
+    "source": "疯读小说（优+）",
+    "id": "97ea92219cefb2b56d60e3849bc49ca3",
+    "query": "剑",
+    "date": "2026-11-14T02:14:51.3031499+08:00",
+    "passed": true,
+    "title": "绝世剑神",
+    "url": "https://fiction.fengduxiaoshuo.com/doReader/enter_bookinfo_index?_token=REDACTED&bookId=86318&_sv=v2",
+    "chapterCount": 6003,
+    "samples": [
+      {
+        "sha256": "B3ED628F25F5AA79BE300AD9042161FEC0F6C2EA942ECFEA456A8239E4C72412",
+        "chapter": "第一章神秘小鼎",
+        "chars": 3476,
+        "excerpt": "一间小木屋内。“嘶……”林辰倒吸一口冷气，头部传来剧烈的"
+      },
+      {
+        "sha256": "538270C6443A262DD3B11CFFC12217F3E2BCC62FB87CDC6749C22FBE08A41E76",
+        "chapter": "第二章挑衅",
+        "chars": 3125,
+        "excerpt": "收剑伫立，林辰的眼眸中闪过一抹喜悦之色，同时也有些难以置"
+      }
+    ]
+  }
+]

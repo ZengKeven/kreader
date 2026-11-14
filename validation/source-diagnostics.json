@@ -1,0 +1,1604 @@
+[
+  {
+    "id": "edebe2d40ea41047cba6c6369fa294c5",
+    "name": "起点读书（优+++）",
+    "issue": "ruleSearch.bookUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "e13960f70d9807554ed4ae9f92f7fcbf",
+    "name": "番茄小说（优+++）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "51c98043d70b25c4cb428178e0e0be99",
+    "name": "阅读助手（优+++）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "a3f18b9051cb3e2dec00774c0d3468b3",
+    "name": "天天小说（优+++）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "0af5c627eb0b44a40bc3b7eb4a1e3836",
+    "name": "天天看书（优+++）",
+    "issue": "ruleBookInfo.tocUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "4377e504b78dc41848314bf3f0653ada",
+    "name": "得奇小说（优+++）",
+    "issue": "ruleContent.content 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "e65b7afd81062e9b55ab40f19c102388",
+    "name": "得奇小说（优+++）",
+    "issue": "header 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "ba11fb38843b9d75e6933bcff304dc42",
+    "name": "篱笆文学（优+++）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "f4cb64d3ffc3a27ef0d0d39ca8a91253",
+    "name": "篱笆文学（优+++）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "4ff6d47e7173a70858e2c98712cdee4c",
+    "name": "蓝批小说（优+++）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "39bcbdb832caf906b1e8f0244b3c195d",
+    "name": "蓝批小说（优+++）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "02d7fc8fe4217e1015eaef75c6e7b488",
+    "name": "幻梦轻说（优++）",
+    "issue": "header 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "525b28d5f4d56bd8e94e99119c1f979c",
+    "name": "我的书城（优++）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "408bc2944fac7eb93f88fbd27108ddc2",
+    "name": "八零小说（优++）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "c6dc2c7d7cd14228d4874e25cb5814a5",
+    "name": "天天小说（优++）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "b7cfc7cc1ab4b134795d30508d6b56f1",
+    "name": "猫眼看书（优++）",
+    "issue": "ruleToc.chapterUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "b91689c2a3f54f74ac1b03f4cbcb6ade",
+    "name": "猫眼看书（优++）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "7674446a9c59247cae736ae752326f4c",
+    "name": "猫眼看书（优++）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "e86c92fc3572d5388ba96a75ad915f12",
+    "name": "猫眼看书（优++）",
+    "issue": "ruleToc.chapterUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "556c281e6af98e47021261b45b98ce37",
+    "name": "鲸云轻说（优++）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "acd7f6523e1a63a37769680b3778d27f",
+    "name": "神凑轻说（优++）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "a554dc47ce3ac7aad51243cabb365da0",
+    "name": "轻之文库（优++）",
+    "issue": "ruleToc.chapterName 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "6a60f43b6a01c5cd426ee7dc397ad8a0",
+    "name": "轻之文库（优++）",
+    "issue": "ruleToc.chapterName 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "229c3dd3e195cc03d2216d1d801bc467",
+    "name": "轻说百科（优++）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "2c85a0296d73fc923ae66d444967e614",
+    "name": "异轻纵然（优++）",
+    "issue": "ruleSearch.name 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "227a51fd04b2d0e4534db5e5bba0515a",
+    "name": "茶马小说（优++）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "d49d8a60a93e08d89977d9812b2d04a2",
+    "name": "话本小说（优++）",
+    "issue": "ruleSearch.bookUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "2d8432c8ed692b633b5190b7d4f28459",
+    "name": "镇魂小说（优++）",
+    "issue": "ruleSearch.bookList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "1d2910b6b9aa99e5188a9965ed9501b5",
+    "name": "全本小说（优++）",
+    "issue": "ruleToc.chapterList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "7a3808fa332195638e942b62a8a71137",
+    "name": "趣悦小说（优++）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "8c4cda972439a6c3e8125fbd99cda70a",
+    "name": "番薯小说（优++）",
+    "issue": "ruleToc.chapterUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "97ea92219cefb2b56d60e3849bc49ca3",
+    "name": "疯读小说（优++）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "7d9eacb1816edc3767af2873e5c52572",
+    "name": "番茄小说（优++）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "787296d39bbd2fe8c9ca4bf0790d7e66",
+    "name": "幻想小说（优++）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "d38a730ccbdfbba899b5221ecea00a89",
+    "name": "有度中文（优++）",
+    "issue": "ruleToc.chapterList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "51c98043d70b25c4cb428178e0e0be99",
+    "name": "七猫小说（优++）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "a973ad4b9b42e5e7f3da9735a81ee450",
+    "name": "七猫小说（优++）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "dfbd818e6f7415e487deca06618b6c36",
+    "name": "七猫小说（优++）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "34c6c150b67abfa6a968d205a1b4e422",
+    "name": "全免小说（优++）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "497b90c6d494403d284f9e9206e10954",
+    "name": "爱淘小说（优++）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "47ede65d942fffb25e172436f1cd7562",
+    "name": "二八看书（优++）",
+    "issue": "ruleSearch.bookList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "2fd5f58192f15b3b1b9c109869357440",
+    "name": "阅友小说（优++）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "eb8d09652f35347c3db4b60022a1e3d5",
+    "name": "陶越文华（优++）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "4d975c46176c78449f3cbf6a59cfaca4",
+    "name": "风扇枕说（日+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "548b68eea2029ceef58f7a05b08abb3a",
+    "name": "番茄小说（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "ae48dc2981afcd5dbeea42559937f6f2",
+    "name": "番茄小说（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "f8a3a2e7e8df8d9df945f59050fc1305",
+    "name": "番茄小说（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "29718f3c3b17e293f15f0349bc9e552d",
+    "name": "阿巴小说（优+）",
+    "issue": "ruleSearch.bookUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "818a053544bc9270a08fd51f7345e6af",
+    "name": "有度轻说（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "835ebbfd39f44f6aa68a2a63dfe4a03a",
+    "name": "轻说机翻（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "0ef157d743774d487de52441f7975179",
+    "name": "太极小说（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "dfc5e2c079ea84a464b13e25bcffd1a7",
+    "name": "天天书吧（优+）",
+    "issue": "header 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "1bb8d072276f4ad3708a5d1e9ad94e08",
+    "name": "天天书吧（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "4019d1439b0b870ffaf8c60613dc4b4d",
+    "name": "阅友小说（优+）",
+    "issue": "ruleSearch.bookUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "6facbc55bbdc6ca65c6924d7ac502c0a",
+    "name": "阅友小说（优+）",
+    "issue": "header 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "af85cd983c31098b9e6c83420dee55cb",
+    "name": "中文书城（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "f3d1750edb38632a08acb5ff7d939e86",
+    "name": "酷匠网吧（优+）",
+    "issue": "ruleBookInfo.tocUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "fd0d561a90307d803dc40dcae9d3a8fd",
+    "name": "国学書库（优+）",
+    "issue": "header 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "7383ee50e0f86a44b0fd0e0b7473aae5",
+    "name": "国学典籍（优+）",
+    "issue": "缺少搜索、目录或正文规则",
+    "imported": true
+  },
+  {
+    "id": "f1ed7753d419f7b1c84c4aaefa6040de",
+    "name": "国学经典（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "0b3ad25c91471566070ebddccff4e801",
+    "name": "中华典藏（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "fb904277e1befe2368640f00fb12835f",
+    "name": "中华典藏（优+）",
+    "issue": "ruleToc.chapterList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "3a44ff1af921ceb89852f14413b8e3df",
+    "name": "古龙武侠（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "c89f93c6b2b3d1656a5ebc1550d0317d",
+    "name": "古龙全集（优+）",
+    "issue": "缺少搜索、目录或正文规则",
+    "imported": true
+  },
+  {
+    "id": "a311aba6335e1e00f27d7d6aeec1f693",
+    "name": "金庸小说（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "348a4f1ee3be6f78cfd14bd6e4168ee6",
+    "name": "盗墓笔记（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "4c0843cc0b0f267bdd9802e6bf9db224",
+    "name": "民间故事（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "da42dc5a267671ec5b47b650210076c2",
+    "name": "鬼故事集（优+）",
+    "issue": "ruleToc.chapterList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "324fefedd44d5637bb733effacd971d8",
+    "name": "盐选文库（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "df17c58a20e6b7a7c8b18e5706c4f34c",
+    "name": "盐选文库（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "a8a6f18201431abb598827b59e4e1c72",
+    "name": "我是盐神（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "6ee726b69dd2f237f65a17e988d8866d",
+    "name": "中华诗词（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "a0345050588428ebb29f8b6542d9a1d3",
+    "name": "古诗文网（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "356a23a2f23807bed5f94a1b30bd9a4d",
+    "name": "古诗词网（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "f00c3386f10eacbe690bbbc215f81b22",
+    "name": "古典文学（优+）",
+    "issue": "ruleToc.chapterList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "b9a1b2dac7023ac5e3e131f47e86450e",
+    "name": "古典文学（优+）",
+    "issue": "ruleToc.chapterList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "844c516e0716b6d1b0ae021d86d48069",
+    "name": "天涯知识（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "cadf4724870e82a522dd384b36a0d7ce",
+    "name": "斗罗小说（优+）",
+    "issue": "缺少搜索、目录或正文规则",
+    "imported": true
+  },
+  {
+    "id": "85204b4c8ade867fdf3470e6012622a5",
+    "name": "熊猫文学（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "4c0af541a551d1445adec5e6ea60b958",
+    "name": "百合爱会（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "371d847bd9e984de7bdbd5257e758ff1",
+    "name": "全本小说（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "ac3bf5e4a28232b151278b0d7fadd45e",
+    "name": "三七小说（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "a176467c241a724a374926526e179c9a",
+    "name": "城堡小说（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "be6bc224a0d554d82c4ddb39a19e7f07",
+    "name": "旭日小说（优+）",
+    "issue": "ruleToc.chapterUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "51c98043d70b25c4cb428178e0e0be99",
+    "name": "七猫小说（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "97ea92219cefb2b56d60e3849bc49ca3",
+    "name": "疯读小说（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "763a2df9f7cf60e89cea3b04a81bb3a0",
+    "name": "大唐小说（优+）",
+    "issue": "ruleToc.nextTocUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "38ffc1a82cb3c556e7ad6ca6496b514e",
+    "name": "狸猫故事（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "60d5f69b4a3b6613c7a22f123102fdf8",
+    "name": "狸猫故事（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "85645b423eb321f380df375f8debc721",
+    "name": "狸猫故事（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "e35e1e2cd1f510c8bf994084b01f831a",
+    "name": "书香阁子（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "efffd3d64d374730dc38dffb63bdf085",
+    "name": "风云小说（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "94ec0165cde467ca225d0db6c79e787d",
+    "name": "八三中文（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "8312a4da2e972018e6c1be1729cb9af3",
+    "name": "阅读库子（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "904a168bb2788cd8c190f86a024fd5c4",
+    "name": "安读书网（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "c8bbeb93a87ca3e5cbac1c14c80f789c",
+    "name": "快眼看书（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "9f08fac3a86bfc9bd08cbe91af7053a1",
+    "name": "快眼看书（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "5a3717c98dc35415a2e671873a3f0504",
+    "name": "小米阅读（优+）",
+    "issue": "ruleToc.chapterList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "566a9da3dea31477f3d6cf2d287ff1fa",
+    "name": "米读小说（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "7956897ace18c66b4b8e5c47ec5b45ca",
+    "name": "小米书城（优+）",
+    "issue": "ruleToc.chapterList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "062cdc7d80291c35bda39dd2ba7f72f1",
+    "name": "独步小说（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "ed5d11ff9ad445ffef371bc96341c275",
+    "name": "神凑轻说（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "70947d1adc1d6f44897272ce53d566bc",
+    "name": "轻之文库（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "06780558c4d68fc08b92aa03507e1653",
+    "name": "轻之文库（优+）",
+    "issue": "ruleToc.chapterName 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "a38faf7e5285445cef87a57cd4ac8c7b",
+    "name": "鲸云轻说（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "ded92cad885a53cc49f5aaccd76ffd8b",
+    "name": "鲸云轻说（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "f6eb03cad223579556ead44269751d38",
+    "name": "炫动小说（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "45317178ddd0d5332a996b19733d2e9b",
+    "name": "书法小说（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "cf66bfeee51cfb09c24b1c4c292f9726",
+    "name": "爱久久网（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "797daf93f01a37f0b8b599dc2d6796df",
+    "name": "桔纸书屋（优+）",
+    "issue": "ruleBookInfo.tocUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "08d02065cb580d3e02807de529695c30",
+    "name": "有度中文（优+）",
+    "issue": "ruleContent.replaceRegex 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "2c4294677fe35c05f5c9b240506f4788",
+    "name": "咸鱼小说（优+）",
+    "issue": "ruleToc.nextTocUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "b7a1b403cdc726151aa3d636d835e71a",
+    "name": "笔下文学（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "1c6e5f175bad2df4046a43d5a8a7d7c2",
+    "name": "秋风书屋（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "89192aba1f1ab32d3b218f11dbdce276",
+    "name": "中文万维（优+）",
+    "issue": "ruleToc.chapterList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "f62ad273c201b5f0015abd8d328ef6ee",
+    "name": "铅笔轻说（优+）",
+    "issue": "ruleContent.content 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "f9458f85d0280361f41bc31d99ea2bc3",
+    "name": "恩施轻语（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "3fdbad4146ca6b43f7a520cff291cfc6",
+    "name": "七百小说（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "c2e6eb1637d377fdde928086a1e7c8f6",
+    "name": "神话之后（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "e9971872e3717613618ac2166d321fb2",
+    "name": "过期杂志（优+）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "3180c9f0ec5dacd2f4f15033d0cf2ceb",
+    "name": "过期杂志（优+）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "262f4bec06cc3886f6c64cab648d5a19",
+    "name": "追光阅读（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "b6bd3e3fc0fa90433a4838eeb2c31f5c",
+    "name": "松鹤庭沐（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "cc08d1ed67c807c0ebd7fa4e67e5bf81",
+    "name": "夜天连看（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "d1e013f6d2951d1370bceea00af00938",
+    "name": "多多书院（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "2c3a847ec5e14ea4f9021be580d00cb3",
+    "name": "全本小说（优）",
+    "issue": "header 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "320685083cedad740dd1e8f317edb8e2",
+    "name": "中文看书（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "4019d1439b0b870ffaf8c60613dc4b4d",
+    "name": "阅友小说（优）",
+    "issue": "ruleSearch.bookUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "3d7fea22a0f732d4e0e7a0479e8df27d",
+    "name": "博览群书（优）",
+    "issue": "ruleBookInfo.tocUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "4c1a53add9f78e22edc3e67a1e2b3e87",
+    "name": "文桑小说（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "abb0e6516170bacf33b09fb098fa4d4f",
+    "name": "商店小说（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "a8cff2dad0c76aac6df3b4cbe54baddb",
+    "name": "五五读书（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "99ecde4b4d52f1f5794da5f7d8ac5f52",
+    "name": "图书迷子（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "93f7a410b0e3706d68c103a2b0e8aba0",
+    "name": "同人小说（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "c78c6c52569168feab570cafe18333e0",
+    "name": "车群小说（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "083ba7ba2e0864538453c3f99f197e8a",
+    "name": "四三看书（优）",
+    "issue": "ruleSearch.bookList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "b59c1c2b70109cc5e01020cce897e383",
+    "name": "言情港吧（优）",
+    "issue": "ruleBookInfo.tocUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "5d34b8f834c1164eeba4810f672c90e0",
+    "name": "无线电子（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "fa4d2a6ee6d2d586101f6b98ea15bb88",
+    "name": "无奈书库（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "bbfb499e93254f882a317d7569c70e1d",
+    "name": "搜书小说（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "28d20c72d5f77b595f3cb51f39a77fdc",
+    "name": "灵感小说（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "aa833bbebd566c885f7bd21d9de282c9",
+    "name": "就爱文学（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "f8bbb18ee64b03e849a18b8c29b4968e",
+    "name": "速读谷吧（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "ebf30aa782180fc7c9298d364eaddbb3",
+    "name": "蚂蚁文学（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "b07e71c3dfe3e7c65e350a42208cb18d",
+    "name": "壹二小说（优）",
+    "issue": "ruleContent.content 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "4251c45fec4177603e7e7ab0f8de1a26",
+    "name": "冰清小说（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "f04c0a5888660af0decdb5d213c9aa21",
+    "name": "爱爱中文（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "6f1ddfd222fb47fef8161058ea4193d4",
+    "name": "五五读书（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "4cc6297dbc046b6b3a7e0124e22cecc4",
+    "name": "闲看小说（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "3fefc240f9c8b2994b134ae457bdda62",
+    "name": "爱下电子（优）",
+    "issue": "ruleToc.chapterList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "79a77b8ab7d835323e710e18ad38a01d",
+    "name": "乐文阁网（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "7be8b167023041313672bd6390f7780e",
+    "name": "三五中文（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "9eae3a797483c1b9c20e85e76828e050",
+    "name": "零零小说（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "81a4980cc005f2718ce83f6429dd18ad",
+    "name": "八一中文（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "b2df21a5ee09a821043db05beb45cb8c",
+    "name": "铅笔小说（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "f8bbb18ee64b03e849a18b8c29b4968e",
+    "name": "速读谷子（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "2fd5f58192f15b3b1b9c109869357440",
+    "name": "阅友网络（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "defaa57674683ad36ca09b010b9173f0",
+    "name": "无忧书城（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "ac1cbdbaa1ab89dce9cf80de92b11157",
+    "name": "手机看书（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "315b4ad546feaebae3b956c431fe6d74",
+    "name": "殓师灵异（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "e6077e02d45ce419348c93f2307c34ca",
+    "name": "白浅小说（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "b63e7fd46eefecdd7a8a10a79506a6dc",
+    "name": "天堂深圳（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "30363e5236be33328d04bccf4bd2215d",
+    "name": "求书帮吧（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "e85a0a3139e41b7542e59967f459a8d6",
+    "name": "天悦小说（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "2209e394718c53238e01a6244a250e84",
+    "name": "爱久小说（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "cca2734839c2df759555e089c90f484d",
+    "name": "全本同人（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "347e01de67618982c2ebae940562f15e",
+    "name": "爱尚小说（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "a8dff4eaf3d20868aab9096531a482d9",
+    "name": "大美书网（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "16169282116bb5b7b9be2c473cac93a2",
+    "name": "蚂蚁阅读（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "4d1ace6ef71f9e6d6cf2844b9fd804a2",
+    "name": "霹雳书坊（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "79fc2484b5140798150d8a3b57c13c2c",
+    "name": "花生小说（优）",
+    "issue": "ruleToc.chapterUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "a40be643a8cf42a4a44677b277db734e",
+    "name": "红牛小说（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "a1b3fb3da174762d0cf7ec76c5cecce2",
+    "name": "双零电子（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "45d2ec4d62a34fc26c74eca382c990e1",
+    "name": "全本小说（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "9ccf9f259ed3b47330d118e3467aa33d",
+    "name": "独步小说（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "54d9d8ad805fa66a5fef19360f3218b4",
+    "name": "绿色小说（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "7a9a4cb75828ef2b1713e014ed243af7",
+    "name": "零点看书（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "2775408c8d1116ac3c9bab5cc6d85f6a",
+    "name": "笔趣小说（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "b30f082f33f6c55503752ada4ff8f716",
+    "name": "阅读书库（优）",
+    "issue": "ruleBookInfo.tocUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "bf80c0fbfb8b51e2f685520d8217f6fa",
+    "name": "棉花小说（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "68258ba23382aff0e519cf01a4d6b579",
+    "name": "电线看书（优）",
+    "issue": "ruleBookInfo.tocUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "267cb4f0f60566a9dc4c5c2a04c84e03",
+    "name": "次元小说（优）",
+    "issue": "ruleSearch.bookList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "5d7e8a188831a043bf62a23aaa356832",
+    "name": "顶点小说（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "94ec0165cde467ca225d0db6c79e787d",
+    "name": "奥尔中文（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "7ef4f4a10afff125a0bea872f9d6d967",
+    "name": "爱下电子（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "3c64c2ea9e36814ba01e535a595cd543",
+    "name": "歌书网吧（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "a42a6e2c7defa32145af08988063d3c2",
+    "name": "万通蜡笔（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "ad29546f62832f4f94f3d1e201b51cb2",
+    "name": "三叉小说（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "0c71f7fcd2943a3259b6e9d2defaa8e7",
+    "name": "火球书库（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "a80318056fdfef78f932666a47cf149a",
+    "name": "秋风书屋（导）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "f2b540e14be0da74a76648e689a15f34",
+    "name": "鸠摩搜书（导）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "082e68ac98270dcb162c79df472e1531",
+    "name": "苦瓜书盘（导）",
+    "issue": "ruleToc.chapterName 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "bd2855ed3f408e9f01f7f075ae102f78",
+    "name": "爱下电子（繁）",
+    "issue": "ruleBookInfo.tocUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "3e502e620ef25ccf1768c4cac61fd440",
+    "name": "新读小说（繁）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "cafde88735fca81a574780b68dc8a250",
+    "name": "爱写小说（日）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "4b2075ca537786dc58115b3d3c09bbda",
+    "name": "全英文学（英）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "0a943bebf4912f981d905e4c40ddd935",
+    "name": "英文小说（英）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "61a1d2c103b273f078e00066bee8877d",
+    "name": "英文小说（英）",
+    "issue": "ruleContent.content 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "adf17f9b2deb430c10b240816853ad88",
+    "name": "英语阅读（英）",
+    "issue": "ruleToc.chapterUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "85151b9128172dde37d15530ca5bd73c",
+    "name": "双语小说（英）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "9f38e05b9a3afddbb2098a79d79dc26f",
+    "name": "起点中文（优+）",
+    "issue": "ruleToc.chapterUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "c77bb4543a963a4f0b3b12749b73d52a",
+    "name": "起点中文（优+）",
+    "issue": "ruleSearch.bookUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "c77bb4543a963a4f0b3b12749b73d52a",
+    "name": "起点男频（优）",
+    "issue": "ruleSearch.bookList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "b6bd3e3fc0fa90433a4838eeb2c31f5c",
+    "name": "企鹅浏览（优）",
+    "issue": "ruleSearch.bookUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "e0b4825a9ef749812763e7698495ac2e",
+    "name": "飞卢小说（优）",
+    "issue": "ruleToc.chapterName 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "3f42796b910aad42f6a28e3f162e7832",
+    "name": "次元姬子（优）",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "852705caa75a4dc774d012479a1d0c7d",
+    "name": "书耽小说（优）",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "d9d0eea08d1771b4a1163840a4b0d89f",
+    "name": "独阅读网",
+    "issue": "ruleToc.chapterUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "d9740a5dee2b66cb5bf2fc0025b27250",
+    "name": "笔尚小说",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "de080bfdc73e29d01ef7bf396a68b33a",
+    "name": "追书神器",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "61b825affc242f7d27e10b615fe38b8a",
+    "name": "书旗小说",
+    "issue": "ruleToc.chapterList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "2b03046a4eb1aa8333c6e2857b8aad1d",
+    "name": "猫九小说",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "a65a216eb2e9568fedc02488ba1934ad",
+    "name": "百度小说",
+    "issue": "ruleToc.nextTocUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "0e63ebaf14fbac047f93c0c514d65087",
+    "name": "七点小说",
+    "issue": "ruleToc.chapterList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "8e502f1b8e3c81cbd0ce27e302bdf745",
+    "name": "笔尚小说",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "c6d3401ff1bb9e75ad8bcaabd2760864",
+    "name": "企鹅阅读",
+    "issue": "ruleToc.chapterUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "da79aa856366756322a63749c814ba89",
+    "name": "企鹅阅读",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "a367c8d33b74e7e79a43d3db22612711",
+    "name": "企鹅浏览",
+    "issue": "header 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "732dfe873feb6e273e0b4d2745d5d237",
+    "name": "企鹅阅读",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "e0e002f1296307f1497bafe7a36ac7d5",
+    "name": "磨铁中文",
+    "issue": "ruleToc.chapterName 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "760c223c9705e796cc8768794710d3b0",
+    "name": "看看阅读",
+    "issue": "ruleToc.chapterUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "ec61c41fc72d8748e7ad697abed5e6dd",
+    "name": "哎爱巴士",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "5c43a7fe19f1f8f35fec90e6d80f1a2b",
+    "name": "豆腐阅读",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "ae579120d054879e6f736c61e41d8c71",
+    "name": "纵横中文",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "074e2667a8defb6ce6dc55a3768223f3",
+    "name": "纵横中文",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "af302a4c61690009a2421ed8092707c3",
+    "name": "晋江文学",
+    "issue": "ruleSearch.bookUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "c59ee62843fbe4c7ef84a1754fa44dd3",
+    "name": "晋江文学",
+    "issue": "ruleToc.chapterUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "079dbe3a286eaa8a86461913afe2f15a",
+    "name": "晋江文学",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "5b114ff80aac50517094663d81bcbcab",
+    "name": "晋江评论",
+    "issue": "header 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "5e0c1a444c6314d3d6bec65d961b4624",
+    "name": "天地中文",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "3fbd551506cce579a2c751e5323e45ee",
+    "name": "追书出版",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "85b227d8a312163f9d95cdd1a0187ef7",
+    "name": "红薯网站",
+    "issue": "ruleSearch.bookList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "b8c96153c6e7b8adf8a3c7ea463db135",
+    "name": "中小说网",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "5da6476bce8b063f8ed26aef19bc7788",
+    "name": "栀子欢波",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "5da6476bce8b063f8ed26aef19bc7788",
+    "name": "栀子欢子",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "5da6476bce8b063f8ed26aef19bc7788",
+    "name": "栀子欢网",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "08d02065cb580d3e02807de529695c30",
+    "name": "有度中文",
+    "issue": "ruleToc.chapterList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "9bd96f416190fed08011bf3604a77636",
+    "name": "掌阅小说",
+    "issue": "ruleContent.content 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "bb8befd16f52ef287d9e398d2825a1df",
+    "name": "九怀小说",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "bb8befd16f52ef287d9e398d2825a1df",
+    "name": "九怀文学",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "2a9f7cdfdd7a210807deeb869b679e44",
+    "name": "铁血读书",
+    "issue": "ruleBookInfo.tocUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "493528e877cd627aa363ab75c696fd48",
+    "name": "铁血读书",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "9f0d53c9f62edf1c7e63590ef6899f23",
+    "name": "九阅小说",
+    "issue": "ruleToc.nextTocUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "3f42796b910aad42f6a28e3f162e7832",
+    "name": "轻次元姬",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "5cb36db0b5ed6ee7cbd3752e17f1d21b",
+    "name": "酷我小说",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "cdb23504e2419daaee01fd6012181d95",
+    "name": "酷我小说",
+    "issue": "ruleToc.chapterUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "84e8a3e95643e07bf127533cd35cc54d",
+    "name": "酷我小说",
+    "issue": "ruleToc.chapterUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "785e5b41e4561175d917fef83cde1853",
+    "name": "刺猬猫吧",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "022b3ea71838ce8cb6658da9877cc754",
+    "name": "轻菠萝包",
+    "issue": "ruleBookInfo.tocUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "a379803784aa31a1f773e1d3c318e3b5",
+    "name": "起点中文",
+    "issue": "searchUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "022b3ea71838ce8cb6658da9877cc754",
+    "name": "苏轻小说",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "44c85b7bc73857f0cb6de0b5e64645b7",
+    "name": "若初文学",
+    "issue": "ruleToc.chapterName 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "3b515e27cba8b44b1d84a1837c7fa239",
+    "name": "若初文学",
+    "issue": "ruleSearch.bookUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "5fbd96fab048749d2cc738ae02d5bcc5",
+    "name": "梧桐中文",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "ecc32462697ec86f12bd5958215bcadb",
+    "name": "梧桐中文",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "61a2d3ea62e1fbd30b054c92bc300a00",
+    "name": "安之原创",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "73a5cd8d8542141a5548486ec6c71089",
+    "name": "布咕阅读",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "a7bc779b9ac9767a67735f6637172340",
+    "name": "网易小说",
+    "issue": "ruleToc.chapterUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "74f4f6d57b33f1589c20fb3644087520",
+    "name": "网易云说",
+    "issue": "ruleSearch.bookList 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "56f3ec0829c8e95e0d0216f3559098da",
+    "name": "安轻小说",
+    "issue": "ruleToc.chapterName 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "253f7e65c3a5bf3d147367b7194c0f8e",
+    "name": "安之原创",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "03b275ca15ee82afb14dd9910083076b",
+    "name": "安之原创",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "1d89fb46ea853190b4aaa7be19e073e9",
+    "name": "安轻小说",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "9036738ad0d52cae2cc4664ed0ab9b1e",
+    "name": "刺猬猫吧",
+    "issue": "ruleToc.chapterUrl 需要脚本或 WebView",
+    "imported": true
+  },
+  {
+    "id": "785e5b41e4561175d917fef83cde1853",
+    "name": "刺猬猫网",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "9f27497b8b64dc3781ee1bbe8553b4d2",
+    "name": "经致文学",
+    "issue": "",
+    "imported": true
+  },
+  {
+    "id": "71a4e38e49379238c1060b228aca3d12",
+    "name": "心轻小说",
+    "issue": "",
+    "imported": true
+  }
+]

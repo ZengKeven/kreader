@@ -1,0 +1,54 @@
+[
+  {
+    "source": "古龙武侠（优+）",
+    "query": "绝代双骄",
+    "date": "2026-11-14T21:37:07.8579322+08:00",
+    "passed": true,
+    "title": "第八十四章　意外之变",
+    "tocCount": 60,
+    "url": "https://m.gulongbbs.com/book/jdsj/19964.html",
+    "chapters": [
+      {
+        "characters": 6604,
+        "sha256": "2BC543DCB6EC4426D2BF13450862C4907758DAB53321221BF03C2255B3AB1074",
+        "title": "第一章　名剑香花"
+      },
+      {
+        "characters": 10212,
+        "sha256": "079106D31ECB5BED3BBA7F0C1619730969F66F5FADD322C1239A08B58BC4C1EC",
+        "title": "第二章　刀下遗孤"
+      },
+      {
+        "characters": 6192,
+        "sha256": "A5F771FD93C62580A865838A0EEC8A99E278FAE50513D2EF99AAA9D8BD6BB4CB",
+        "title": "第三章　第一神剑"
+      }
+    ]
+  },
+  {
+    "source": "疯读小说（优+）",
+    "query": "绝世剑神",
+    "date": "2026-11-14T21:37:11.5506660+08:00",
+    "passed": true,
+    "title": "绝世剑神",
+    "tocCount": 6003,
+    "url": "https://fiction.fengduxiaoshuo.com/doReader/enter_bookinfo_index?_token=REDACTED&bookId=86318&_sv=v2",
+    "chapters": [
+      {
+        "characters": 3476,
+        "sha256": "B3ED628F25F5AA79BE300AD9042161FEC0F6C2EA942ECFEA456A8239E4C72412",
+        "title": "第一章神秘小鼎"
+      },
+      {
+        "characters": 3125,
+        "sha256": "538270C6443A262DD3B11CFFC12217F3E2BCC62FB87CDC6749C22FBE08A41E76",
+        "title": "第二章挑衅"
+      },
+      {
+        "characters": 1880,
+        "sha256": "27CF2EB927453AE92971DF4C7B3334031A6F4642E371C41D51C60959F4B4E4B8",
+        "title": "第三章开窍了"
+      }
+    ]
+  }
+]

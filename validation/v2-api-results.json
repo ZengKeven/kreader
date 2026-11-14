@@ -1,0 +1,26 @@
+{
+  "source_schema": 1,
+  "target_schema": 2,
+  "passed": [
+    "v1 副本升级后逐行比对六张旧表，书库、进度、历史及插图均保留",
+    "书架指示器",
+    "独立 HTTP 请求写入和读回 group",
+    "独立 HTTP 请求写入和读回 membership",
+    "独立 HTTP 请求写入和读回 mark",
+    "独立 HTTP 请求写入和读回 rule",
+    "独立 HTTP 请求写入和读回 dict",
+    "独立 HTTP 请求写入和读回 correction",
+    "独立 HTTP 请求写入和读回 mapping",
+    "按日期、书籍、章节查询阅读记录",
+    "TXT 全书检索含字符位置",
+    "保留原文件，使用自选编码和标题规则重新分章"
+  ],
+  "preserved_rows": {
+    "books": 24,
+    "progress": 2,
+    "history": 20,
+    "sources": 2,
+    "chapters": 6039,
+    "assets": 1
+  }
+}

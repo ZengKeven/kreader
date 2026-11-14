@@ -1,0 +1,12 @@
+{
+  "epubChapters": 3,
+  "profiles": [
+    "A",
+    "B",
+    "A"
+  ],
+  "server": "Self-contained",
+  "client": "Release",
+  "date": "2026-11-14T21:36:22.8619708+08:00",
+  "originalProgressUnchanged": true
+}

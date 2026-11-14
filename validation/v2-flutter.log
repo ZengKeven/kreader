@@ -1,0 +1,9 @@
+Resolving dependencies...
+Downloading packages...
+Got dependencies!
+Upgrading analysis_options.yaml to exclude build and platform directories.
+00:00 +0: loading %TEMP%/NovelReader-v2-flutter/test/reader_flow_test.dart
+00:00 +0: %TEMP%/NovelReader-v2-flutter/test/reader_flow_test.dart: 整屏三区、双向跨章、重排和九种模式
+00:00 +1: %TEMP%/NovelReader-v2-flutter/test/reader_flow_test.dart: 整屏三区、双向跨章、重排和九种模式
+00:03 +2: %TEMP%/NovelReader-v2-flutter/test/reader_flow_test.dart: 替换、删除和插入后引用原段落的 UTF-16 偏移
+00:03 +3: All tests passed!

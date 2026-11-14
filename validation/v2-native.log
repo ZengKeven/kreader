@@ -1,0 +1,21 @@
+Resolving dependencies...
+Downloading packages...
+Got dependencies!
+Upgrading analysis_options.yaml to exclude build and platform directories.
+00:00 +0: loading %TEMP%/NovelReader-v2-flutter/integration_test/windows_reader_test.dart
+Building Windows application...
+C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Microsoft\VC\v180\Microsoft.CppBuild.targets(561,5): warning MSB8029: 中间目录或输出目录无法驻留在临时目录下，因为这可能会导致增量生成出现问题。 [%TEMP%\NovelReader-v2-flutter\build\windows\x64\ZERO_CHECK.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Microsoft\VC\v180\Microsoft.CppBuild.targets(561,5): warning MSB8029: 中间目录或输出目录无法驻留在临时目录下，因为这可能会导致增量生成出现问题。 [%TEMP%\NovelReader-v2-flutter\build\windows\x64\flutter\flutter_assemble.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Microsoft\VC\v180\Microsoft.CppBuild.targets(561,5): warning MSB8029: 中间目录或输出目录无法驻留在临时目录下，因为这可能会导致增量生成出现问题。 [%TEMP%\NovelReader-v2-flutter\build\windows\x64\flutter\flutter_wrapper_plugin.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Microsoft\VC\v180\Microsoft.CppBuild.targets(561,5): warning MSB8029: 中间目录或输出目录无法驻留在临时目录下，因为这可能会导致增量生成出现问题。 [%TEMP%\NovelReader-v2-flutter\build\windows\x64\plugins\file_selector_windows\file_selector_windows_plugin.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Microsoft\VC\v180\Microsoft.CppBuild.targets(561,5): warning MSB8029: 中间目录或输出目录无法驻留在临时目录下，因为这可能会导致增量生成出现问题。 [%TEMP%\NovelReader-v2-flutter\build\windows\x64\flutter\flutter_wrapper_app.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Microsoft\VC\v180\Microsoft.CppBuild.targets(561,5): warning MSB8029: 中间目录或输出目录无法驻留在临时目录下，因为这可能会导致增量生成出现问题。 [%TEMP%\NovelReader-v2-flutter\build\windows\x64\plugins\jni\shared\jni.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Microsoft\VC\v180\Microsoft.CppBuild.targets(561,5): warning MSB8029: 中间目录或输出目录无法驻留在临时目录下，因为这可能会导致增量生成出现问题。 [%TEMP%\NovelReader-v2-flutter\build\windows\x64\runner\novel_reader.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Microsoft\VC\v180\Microsoft.CppBuild.targets(561,5): warning MSB8029: 中间目录或输出目录无法驻留在临时目录下，因为这可能会导致增量生成出现问题。 [%TEMP%\NovelReader-v2-flutter\build\windows\x64\ALL_BUILD.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Microsoft\VC\v180\Microsoft.CppBuild.targets(561,5): warning MSB8029: 中间目录或输出目录无法驻留在临时目录下，因为这可能会导致增量生成出现问题。 [%TEMP%\NovelReader-v2-flutter\build\windows\x64\INSTALL.vcxproj]
+Building Windows application...                                    27.6s
+√ Built build\windows\x64\runner\Debug\novel_reader.exe
+00:00 +0: 两份独立配置通过真实服务端上传、阅读、离线与冲突续读
+00:09 +1: 实际书源从搜书到加入书架并阅读
+00:16 +2: (tearDownAll)
+00:16 +2: All tests passed!
