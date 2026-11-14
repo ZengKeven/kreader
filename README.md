@@ -4,6 +4,8 @@
 
 Flutter 客户端配合个人 ASP.NET Core 10 服务端，提供普通文本书源搜索、TXT／EPUB 上传、章节阅读、离线缓存和跨设备进度同步。
 
+Ubuntu 服务器可直接通过 [Docker Compose 部署](docs/docker-ubuntu.md)，构建时会自动准备内置书源。
+
 - Windows 首版位于 release/windows-x64，启动顺序见 [使用说明](release/windows-x64/使用说明.md)。
 - 客户端源码位于 client，包含 Windows、Android 和 macOS 工程。本轮只构建 Windows。
 - 服务端源码位于 server。运行 dotnet run --project server/NovelServer.csproj 后，在客户端“连接”中填写地址和个人令牌。服务端控制台显示数据目录和令牌文件位置。

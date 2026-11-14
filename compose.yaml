@@ -1,0 +1,14 @@
+name: kreader
+services:
+  server:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${KREADER_BIND:-127.0.0.1}:${KREADER_PORT:-7187}:7187"
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - library:/data
+
+volumes:
+  library:

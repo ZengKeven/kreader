@@ -1,0 +1,49 @@
+name: Ubuntu Docker
+on:
+  push:
+    paths:
+      - 'server/**'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'compose.yaml'
+      - 'validation/prepare-sources.ps1'
+      - '.github/workflows/docker.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start the server
+        run: docker compose up --build --wait --wait-timeout 120
+      - name: Check sources, upload and persistence after container replacement
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=http://127.0.0.1:7187
+          curl -fsS "$base/health" | jq -e '.version == 2'
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$base/api/library")" = 401
+          token="$(docker compose exec -T server cat /data/access-token.txt)"
+          echo "::add-mask::$token"
+          auth=(-H "Authorization: Bearer $token")
+          curl -fsS "${auth[@]}" "$base/api/sources" | jq -e 'length == 2'
+          printf '第一章 初见\n走过山路。\n第二章 再见\n回到山中。\n' > "$RUNNER_TEMP/sample.txt"
+          book="$(curl -fsS "${auth[@]}" -F "file=@$RUNNER_TEMP/sample.txt" "$base/api/upload" | jq -er '.id')"
+          chapter="$(curl -fsS "${auth[@]}" "$base/api/books/$book/toc" | jq -er '.[0].id')"
+          event="$(cat /proc/sys/kernel/random/uuid)"
+          curl -fsS "${auth[@]}" -H 'Content-Type: application/json' -X PUT \
+            -d "{\"chapterId\":\"$chapter\",\"paragraph\":1,\"offset\":1,\"quote\":\"\",\"version\":0,\"eventId\":\"$event\"}" \
+            "$base/api/books/$book/progress" | jq -e '.version == 1'
+          docker compose up -d --force-recreate --wait --wait-timeout 120
+          curl -fsS "${auth[@]}" "$base/api/library" | jq -e --arg book "$book" '.shelf | any(.id == $book)'
+          curl -fsS "${auth[@]}" "$base/api/books/$book/progress" | jq -e --arg chapter "$chapter" '.chapterId == $chapter and .offset == 1'
+          curl -fsS "${auth[@]}" "$base/api/books/$book/chapters/$chapter" | jq -e '.blocks | length > 0'
+          docker compose exec -T server test -s "/data/originals/$book.txt"
+      - name: Show service logs on failure
+        if: failure()
+        run: docker compose logs --tail=80 server
