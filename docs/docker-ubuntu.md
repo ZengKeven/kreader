@@ -1,6 +1,6 @@
 # Ubuntu 上部署 KReader 服务端
 
-Ubuntu 主机只需 Git、Docker Engine 和 Compose 插件。首次构建需要能访问微软容器镜像仓库、Ubuntu 软件源、NuGet 和 GitHub 的原始文件服务。镜像会自行编译 .NET 10 服务端，并校验、写入两个内置书源。若尚未安装 Docker，请先按 [Docker 官方 Ubuntu 安装步骤](https://docs.docker.com/engine/install/ubuntu/#install-using-the-apt-repository) 安装含 `docker-compose-plugin` 的软件包。
+Ubuntu 主机只需 Git、Docker Engine 和 Compose 插件。首次构建需要能访问微软容器镜像仓库、Ubuntu 软件源和 NuGet，镜像会自行编译 .NET 10 服务端。若尚未安装 Docker，请先按 [Docker 官方 Ubuntu 安装步骤](https://docs.docker.com/engine/install/ubuntu/#install-using-the-apt-repository) 安装含 `docker-compose-plugin` 的软件包。
 
 ## 启动
 
@@ -13,6 +13,8 @@ curl -fsS http://127.0.0.1:7187/health
 ```
 
 已有源码的服务器可以在仓库目录执行 `git pull --ff-only` 后运行同一条 Compose 命令。健康接口返回 `{"app":"个人书房","version":2}`。用 `sudo docker compose ps` 查看健康状态，用 `sudo docker compose logs --tail=100 server` 查看启动日志。Docker 服务随系统启动时，容器将按 `unless-stopped` 策略恢复。
+
+新书库的书源列表为空，可在客户端的「我的 → 书源管理」导入。更新时会复用已有书库中的书源。
 
 ## 连接电脑和手机
 

@@ -1,7 +1,7 @@
 #requires -Version 7.0
 param(
     [string]$CollectionPath = (Join-Path $PSScriptRoot 'yck-novel.json'),
-    [string]$StarterPath = (Join-Path $PSScriptRoot '../server/starter-sources.json')
+    [Parameter(Mandatory)][string]$OutputPath
 )
 $ErrorActionPreference = 'Stop'
 $revision = 'b148fe2072b290f4a207ee0846874ea19e6dacc7'
@@ -24,5 +24,5 @@ $sources = foreach ($name in '疯读小说（优+）','古龙武侠（优+）') 
     if ($matchesByName.Count -ne 1) { throw "未找到唯一的书源 $name" }
     $matchesByName[0]
 }
-ConvertTo-Json -InputObject @($sources) -Depth 64 | Set-Content -LiteralPath $StarterPath -Encoding utf8NoBOM
-Write-Output "已准备 $($sources.Count) 个内置书源"
+ConvertTo-Json -InputObject @($sources) -Depth 64 | Set-Content -LiteralPath $OutputPath -Encoding utf8NoBOM
+Write-Output "已准备 $($sources.Count) 个在线测试书源"

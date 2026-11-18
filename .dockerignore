@@ -3,5 +3,3 @@
 !server/
 !server/NovelServer.csproj
 !server/*.cs
-!validation/
-!validation/prepare-sources.ps1

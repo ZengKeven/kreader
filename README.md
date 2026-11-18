@@ -4,7 +4,7 @@
 
 Flutter 客户端配合个人 ASP.NET Core 10 服务端，提供普通文本书源搜索、TXT／EPUB 上传、章节阅读、离线缓存和跨设备进度同步。
 
-Ubuntu 服务器可直接通过 [Docker Compose 部署](docs/docker-ubuntu.md)，构建时会自动准备内置书源。
+Ubuntu 服务器可直接通过 [Docker Compose 部署](docs/docker-ubuntu.md)。新书库的书源列表为空，可在客户端的「书源管理」导入。
 
 - Windows 首版位于 release/windows-x64，启动顺序见 [使用说明](release/windows-x64/使用说明.md)。
 - 客户端源码位于 client，包含 Windows、Android 和 macOS 工程。本轮只构建 Windows。
@@ -13,10 +13,9 @@ Ubuntu 服务器可直接通过 [Docker Compose 部署](docs/docker-ubuntu.md)�
 
 ## 构建
 
-首次克隆后，在项目根目录用 PowerShell 7 运行以下命令。脚本按固定版本下载公开书源合集，校验 SHA-256，再准备服务端首次建库使用的两个书源。
+在项目根目录用 PowerShell 7 执行 Windows 构建。
 
 ```powershell
-./validation/prepare-sources.ps1
 dotnet publish server/NovelServer.csproj -c Release -r win-x64 --self-contained true -o release/v2-windows-x64/server
 ./validation/build-v2.ps1 -Task release
 ```

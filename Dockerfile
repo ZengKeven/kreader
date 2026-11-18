@@ -2,12 +2,9 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
 WORKDIR /src
 COPY server/NovelServer.csproj server/
 RUN dotnet restore server/NovelServer.csproj
-COPY validation/prepare-sources.ps1 validation/
-RUN pwsh -NoLogo -NoProfile -File validation/prepare-sources.ps1
 COPY server/*.cs server/
 RUN dotnet publish server/NovelServer.csproj -c Release --no-restore \
-    --no-self-contained -p:UseAppHost=false -o /out \
-    && test -s /out/starter-sources.json
+    --no-self-contained -p:UseAppHost=false -o /out
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble
 RUN apt-get update && apt-get install -y --no-install-recommends curl \

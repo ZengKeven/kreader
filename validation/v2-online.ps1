@@ -2,6 +2,9 @@ $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot
 $exe=Join-Path $root 'release/v2-windows-x64/server/NovelServer.exe'
 $env:NOVEL_DATA=Join-Path $PSScriptRoot ('work/v2-online-'+[guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $env:NOVEL_DATA -Force | Out-Null
+$fixture=Join-Path $env:NOVEL_DATA 'online-sources.json'
+& "$PSScriptRoot/prepare-sources.ps1" -OutputPath $fixture
 $env:NOVEL_TOKEN=[guid]::NewGuid().ToString('N')
 $env:ASPNETCORE_URLS='http://127.0.0.1:17953'
 $h=@{Authorization="Bearer $env:NOVEL_TOKEN"}
@@ -10,6 +13,9 @@ if(Get-NetTCPConnection -LocalPort 17953 -State Listen -ErrorAction SilentlyCont
 $p=Start-Process $exe -WorkingDirectory (Split-Path $exe) -WindowStyle Hidden -PassThru
 try{
  for($i=0;$i -lt 40;$i++){try{if((Invoke-RestMethod "$env:ASPNETCORE_URLS/health").version -eq 2){break}}catch{};Start-Sleep -Milliseconds 250}
+ $payload=@{json=(Get-Content -LiteralPath $fixture -Raw -Encoding utf8)} | ConvertTo-Json -Compress
+ $import=Invoke-RestMethod "$env:ASPNETCORE_URLS/api/sources/import" -Method Post -Headers $h -ContentType 'application/json; charset=utf-8' -Body $payload
+ if(@($import | Where-Object { $_.imported -and $_.issue -eq '' }).Count -ne 2){throw '未能导入两个在线测试书源'}
  $report=@()
  foreach($source in (GetApi sources)){
  $q=if($source.name -like '*疯读*'){'绝世剑神'}else{'绝代双骄'}

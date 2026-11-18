@@ -2,6 +2,8 @@
 
 版本：2026-11-14。参考 [Legado MD3 固定提交](https://github.com/HapeLee/legado-with-MD3/tree/4efe24965915a326f5e910197cb73966892f2eb0)。[原版与新版界面对照](v2-comparison.html)：书架、底部菜单、设置、窄窗及宽窗。右侧截图来自 Windows 原生 Flutter 引擎，使用测试书库。
 
+重新运行 Windows 集成测试时，使用 `pwsh -File ./validation/v2-integration.ps1` 验证本地导入与同步。加上 `-Online` 会为测试书库导入样例书源，并运行在线搜书用例。
+
 | 场景 | 结果与证据 |
 |---|---|
 | 三个点击区、分页跨章与连续滚动 | 默认左退、右进、中间显示工具栏；两向越过章界，从当前章第一页返回上一章末页；往返各 20 次、取消短拖动、打开设置切换滚动、锚点重排，以及文字替换后的 UTF-16 位置映射均在 [Flutter 回归](v2-flutter.log) 中通过。 |

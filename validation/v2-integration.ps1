@@ -1,7 +1,14 @@
+param([switch]$Online)
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot
 $dir=Join-Path $PSScriptRoot ('work/v2-native-'+[guid]::NewGuid().ToString('N'))
 & "$PSScriptRoot/fixtures.ps1" -Folder $dir -ThreeChapters
+if($Online){
+ $env:NOVEL_TEST_SOURCES=Join-Path $dir 'online-sources.json'
+ & "$PSScriptRoot/prepare-sources.ps1" -OutputPath $env:NOVEL_TEST_SOURCES
+}else{
+ Remove-Item Env:NOVEL_TEST_SOURCES -ErrorAction SilentlyContinue
+}
 $env:NOVEL_DATA=Join-Path $dir server
 $env:NOVEL_TEST_WORK=$dir
 $env:NOVEL_SCREENSHOTS=Join-Path $PSScriptRoot 'v2-screens'

@@ -178,6 +178,8 @@ void main() {
     );
     await tester.pumpWidget(const SizedBox.shrink());
   });
+  final fixturePath = Platform.environment['NOVEL_TEST_SOURCES'];
+  if (fixturePath == null) return;
   testWidgets('实际书源从搜书到加入书架并阅读', (tester) async {
     final work = Platform.environment['NOVEL_TEST_WORK']!;
     final store = await ReaderStore.open('$work/online-ui');
@@ -185,6 +187,14 @@ void main() {
       '$work/server/access-token.txt',
     ).readAsString()).trim();
     await store.connect(Platform.environment['NOVEL_TEST_URL']!, secret);
+    final fixture = await File(fixturePath).readAsString();
+    final imported = rows(
+      await store.send('POST', 'sources/import', {'json': fixture}),
+    );
+    expect(
+      imported.where((s) => s['imported'] == true && s['issue'] == ''),
+      hasLength(2),
+    );
     await tester.pumpWidget(BooksApp(store));
     Future<void> waitFor(Finder f) async {
       for (int i = 0; i < 260; i++) {

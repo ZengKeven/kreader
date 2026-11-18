@@ -8,15 +8,6 @@ Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 var builder = WebApplication.CreateBuilder(args);
 var root = Environment.GetEnvironmentVariable("NOVEL_DATA") ?? Path.Combine(AppContext.BaseDirectory, "data");
 var library = new Library(root); var catalog = new Catalog(library);
-using (var database = library.Open())
-{
-    if (database.ExecuteScalar<long>("PRAGMA user_version") == 0)
-    {
-        var starters = Path.Combine(AppContext.BaseDirectory, "starter-sources.json");
-        if (File.Exists(starters)) catalog.Import(File.ReadAllText(starters));
-        database.Execute("PRAGMA user_version=1");
-    }
-}
 var keyFile = Path.Combine(library.Root, "access-token.txt");
 var token = Environment.GetEnvironmentVariable("NOVEL_TOKEN");
 if (string.IsNullOrWhiteSpace(token))
