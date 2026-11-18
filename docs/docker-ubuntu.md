@@ -18,18 +18,11 @@ curl -fsS http://127.0.0.1:7187/health
 
 ## 连接电脑和手机
 
-默认端口仅绑定 Ubuntu 本机，适合本机验证、SSH 隧道或接入同机的 HTTPS 反向代理。
+默认发布到宿主机的 `0.0.0.0:7187`。同一局域网的设备可以使用 Ubuntu 的局域网地址连接。
 
-在可信局域网直连时，先运行 `ip -br -4 addr` 找到 Ubuntu 的局域网地址。以下以 `192.168.1.20` 为例。在仓库目录的 `.env` 文件中添加或更新一行：
-
-```dotenv
-KREADER_BIND=192.168.1.20
-```
-
-保存后重新应用配置并取得个人令牌：
+运行 `ip -br -4 addr` 查找 Ubuntu 的局域网地址。以下以 `192.168.1.20` 为例，检查连接并取得个人令牌：
 
 ```bash
-sudo docker compose up -d --wait
 curl -fsS http://192.168.1.20:7187/health
 sudo docker compose exec -T server cat /data/access-token.txt
 echo
@@ -37,7 +30,9 @@ echo
 
 在同一 Wi-Fi 的设备上先用浏览器打开 `http://192.168.1.20:7187/health`。随后在阅读器的 **我的 → 连接与同步** 中填写服务地址 `http://192.168.1.20:7187` 和上一步的令牌，点击 **连接并同步**。客户端会自动添加 API 路径。
 
-如果部署在公网云主机，请保留默认的回环绑定，从同机 HTTPS 反向代理转发到 `http://127.0.0.1:7187`，客户端填写 HTTPS 域名。也可以通过 VPN 接入内网。局域网端口被占用时，可在 `.env` 另加 `KREADER_PORT=17187`，再运行 `docker compose up -d --wait` 并相应更换客户端端口。直接发布的 Docker 端口有自己的防火墙转发规则。[Docker 端口与防火墙说明](https://docs.docker.com/engine/install/ubuntu/#firewall-limitations)
+仓库目录的 `.env` 可以覆盖默认绑定。只发布到一个局域网地址时，可设置 `KREADER_BIND=192.168.1.20`；要监听所有 IPv4 网卡，可设置 `KREADER_BIND=0.0.0.0`。端口被占用时，可设置 `KREADER_PORT=17187`。保存后运行 `sudo docker compose up -d --wait` 应用配置。
+
+公网部署如果通过同机 HTTPS 反向代理接入，请在 `.env` 中设置 `KREADER_BIND=127.0.0.1`，代理转发到 `http://127.0.0.1:7187`，客户端填写 HTTPS 域名。直接发布的 Docker 端口有自己的防火墙转发规则。[Docker 端口与防火墙说明](https://docs.docker.com/engine/install/ubuntu/#firewall-limitations)
 
 ## 迁移现有 Windows 书库
 
