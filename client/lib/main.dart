@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'cover.dart';
 import 'reader.dart';
+import 'reading_statistics.dart';
 import 'store.dart';
 
 void main(List<String> args) async {
@@ -15,33 +17,61 @@ void main(List<String> args) async {
 class BooksApp extends StatelessWidget {
   final ReaderStore store;
   const BooksApp(this.store, {super.key});
-  @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: '个人书房',
-    debugShowCheckedModeBanner: false,
-    theme: ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xff5a5b87),
-        surface: const Color(0xfffaf9fa),
-      ),
+
+  static final _light = _theme(Brightness.light);
+  static final _dark = _theme(Brightness.dark);
+
+  static ThemeData _theme(Brightness brightness) {
+    final light = brightness == Brightness.light;
+    final colors = ColorScheme.fromSeed(
+      seedColor: const Color(0xff5a5b87),
+      brightness: brightness,
+      surface: light ? const Color(0xfffaf9fa) : null,
+    );
+    return ThemeData(
+      colorScheme: colors,
       useMaterial3: true,
-      appBarTheme: const AppBarTheme(backgroundColor: Color(0xfff1eeee)),
+      appBarTheme: AppBarTheme(
+        backgroundColor: light
+            ? const Color(0xfff1eeee)
+            : colors.surfaceContainer,
+      ),
       inputDecorationTheme: const InputDecorationTheme(
         border: OutlineInputBorder(),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<AppThemeMode>(
+    valueListenable: store.appTheme,
+    builder: (_, mode, _) => MaterialApp(
+      title: '个人书房',
+      debugShowCheckedModeBanner: false,
+      theme: _light,
+      darkTheme: _dark,
+      themeMode: ThemeMode.values.byName(mode.name),
+      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: readerSystemBars(Theme.of(context).brightness),
+        child: child!,
+      ),
+      home: Home(store),
     ),
-    home: Home(store),
   );
 }
 
-const names = ['书架', '搜书', '历史', '书源', '连接'];
-const icons = [
-  Icons.auto_stories_outlined,
-  Icons.search,
-  Icons.history,
-  Icons.hub_outlined,
-  Icons.settings_outlined,
-];
+enum _HomePage {
+  shelf('书架'),
+  search('搜书'),
+  history('阅读记录'),
+  sources('书源管理'),
+  connection('连接与同步'),
+  stats('阅读统计'),
+  account('我的');
+
+  const _HomePage(this.title);
+  final String title;
+}
 
 class Home extends StatefulWidget {
   final ReaderStore store;
@@ -50,11 +80,23 @@ class Home extends StatefulWidget {
   State<Home> createState() => _HomeState();
 }
 
+enum _ShelfTab {
+  books('书架'),
+  history('历史'),
+  local('本地');
+
+  const _ShelfTab(this.label);
+  final String label;
+}
+
 class _HomeState extends State<Home> with WidgetsBindingObserver {
   ReaderStore get s => widget.store;
-  int tab = 0, searchId = 0;
-  String shelfTab = '全部';
-  List<Json> groups = [], memberships = [], activity = [];
+  _HomePage page = _HomePage.shelf;
+  int searchId = 0, refreshId = 0;
+  _ShelfTab shelfTab = _ShelfTab.books;
+  bool get shelfGrid => s.state['shelfGrid'] == true;
+  String? shelfGroup;
+  List<Json> groups = [], memberships = [];
   bool working = false, searching = false, online = false;
   String status = '', filter = '', sourceId = '', searchMessage = '';
   final keyword = TextEditingController(),
@@ -62,14 +104,18 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       secret = TextEditingController();
   List<Json> sources = [], hits = [];
   List<String> failures = [];
-  Json get library => s.state['library'] ?? {};
+  Set<String>? sourceSelection;
+  Iterable<Json> get searchableSources => sources.where(searchableSource);
+  Iterable<Json> get filteredSources =>
+      sources.where((v) => ('${v['name']} ${v['groupName']}').contains(filter));
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     addr.text = s.base;
     secret.text = s.token;
-    if (s.token.isEmpty) tab = 4;
+    if (s.token.isEmpty) page = _HomePage.connection;
+    unawaited(s.flushReadingTime());
     refresh();
   }
 
@@ -85,6 +131,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    unawaited(s.flushReadingTime());
     if (state == AppLifecycleState.resumed)
       refresh();
     else {
@@ -97,33 +144,47 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
-  Future<void> refresh() async {
-    if (s.token.isEmpty) return;
+  Future<void> refresh({bool readingOnly = false}) async {
+    if (!mounted || s.token.isEmpty) return;
+    final run = readingOnly ? refreshId : ++refreshId;
     try {
-      await s.refresh();
-      await s.flush();
-      final list = rows(await s.get('sources'));
+      await s.refresh(withActivity: true);
+      if (!mounted || run != refreshId) return;
+      setState(() {
+        online = true;
+        status = '';
+      });
+      if (readingOnly) return;
       final extra = await Future.wait([
+        s.get('sources'),
         s.items('group'),
         s.items('membership'),
-        s.get('activity'),
       ]);
-      if (mounted)
+      if (mounted && run == refreshId)
         setState(() {
-          groups = rows(extra[0]);
-          memberships = rows(extra[1]);
-          activity = rows(extra[2]);
-          sources = list;
-          online = true;
-          status = '';
+          sources = rows(extra[0]);
+          groups = rows(extra[1]);
+          memberships = rows(extra[2]);
+          if (!groups.any((g) => g['id'] == shelfGroup)) shelfGroup = null;
+          retainVisibleSourceSelection();
+          if (sourceId.isNotEmpty &&
+              !searchableSources.any((v) => v['id'] == sourceId)) {
+            sourceId = '';
+          }
         });
     } catch (e) {
-      if (mounted)
+      if (mounted && run == refreshId)
         setState(() {
           online = false;
           status = e.toString();
         });
     }
+  }
+
+  void refreshAfterReading() {
+    if (!mounted) return;
+    setState(() {});
+    unawaited(refresh(readingOnly: true));
   }
 
   Future<void> action(Future<void> Function() fn) async {
@@ -141,9 +202,12 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   Future<void> read(Json book, [String? chapter]) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => ReaderPage(s, book, selected: chapter)),
+      MaterialPageRoute(
+        builder: (_) =>
+            ReaderPage(s, book, selected: chapter, resumeSelected: true),
+      ),
     );
-    await refresh();
+    refreshAfterReading();
   }
 
   Future<void> details(Json book) async {
@@ -151,7 +215,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       context,
       MaterialPageRoute(builder: (_) => BookDetails(s, book)),
     );
-    await refresh();
+    refreshAfterReading();
   }
 
   Future<void> upload() async {
@@ -241,7 +305,12 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     setState(() => status = '正在上传并解析 ${file.name}…');
     final b = await s.upload(file, encoding);
     await refresh();
-    if (mounted) setState(() => tab = 0);
+    if (mounted)
+      setState(() {
+        page = _HomePage.shelf;
+        shelfTab = _ShelfTab.local;
+        shelfGroup = null;
+      });
     note('已加入书架 · ${b['title']}');
   }
 
@@ -344,6 +413,63 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     );
   }
 
+  void retainVisibleSourceSelection() {
+    sourceSelection?.retainAll(filteredSources.map((v) => v['id']));
+  }
+
+  Future<void> confirmDeleteSources(Iterable<String> selection) async {
+    final ids = selection.toList(growable: false);
+    if (working || ids.isEmpty) return;
+    if (await confirm('删除选中的 ${ids.length} 个书源？', acceptLabel: '删除') &&
+        mounted) {
+      await action(() => deleteSources(ids));
+    }
+  }
+
+  Future<void> deleteSources(List<String> ids) async {
+    final removed = <String>{};
+    Object? failure;
+    bool stopAfterBatch = false;
+    const batchSize = 8;
+    Future<void> remove(String id) async {
+      try {
+        await s.send('DELETE', 'sources/$id');
+        removed.add(id);
+      } catch (e) {
+        failure ??= e;
+        if (e is! ApiError || e.status == 401 || e.status == 403) {
+          stopAfterBatch = true;
+        }
+      }
+    }
+
+    for (
+      var start = 0;
+      start < ids.length && !stopAfterBatch;
+      start += batchSize
+    ) {
+      await Future.wait(ids.skip(start).take(batchSize).map(remove));
+    }
+    if (!mounted) return;
+    setState(() {
+      sources.removeWhere((v) => removed.contains(v['id']));
+      sourceSelection?.removeAll(removed);
+      if (removed.contains(sourceId)) sourceId = '';
+    });
+    await refresh();
+    if (!mounted) return;
+    final remaining = ids.toSet()..removeAll(removed);
+    remaining.retainAll(sources.map((v) => v['id']));
+    if (sourceSelection?.isEmpty == true)
+      setState(() => sourceSelection = null);
+    final message = '已删除 ${ids.length - remaining.length} 个书源';
+    note(
+      remaining.isEmpty
+          ? message
+          : '$message，剩余 ${remaining.length} 个可重试。$failure',
+    );
+  }
+
   Future<void> search() async {
     final q = keyword.text.trim();
     if (q.isEmpty) return;
@@ -353,13 +479,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     s.state['recentSearch'] = recent.take(12).toList();
     s.persist();
     final run = ++searchId;
-    final selected = sources
-        .where(
-          (v) =>
-              v['enabled'] == 1 &&
-              v['issue'] == '' &&
-              (sourceId == '' || sourceId == v['id']),
-        )
+    final selected = searchableSources
+        .where((v) => sourceId.isEmpty || sourceId == v['id'])
         .toList();
     setState(() {
       hits = [];
@@ -369,36 +490,21 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
           ? '请先导入并启用可搜索的书源。'
           : '正在搜索 0 / ${selected.length}';
     });
-    int next = 0, done = 0;
-    Future<void> worker() async {
-      while (next < selected.length && run == searchId) {
-        final src = selected[next++];
-        try {
-          final result = rows(
-            await s.get('search', {'source': src['id'], 'q': q}),
-          );
-          if (!mounted || run != searchId) return;
-          setState(
-            () => hits.addAll(
-              result.map((b) => {...b, 'sourceName': src['name']}),
-            ),
-          );
-        } catch (e) {
-          if (mounted && run == searchId) failures.add("${src['name']} · $e");
-        }
-        if (mounted && run == searchId)
-          setState(
-            () => searchMessage =
-                '已搜索 ${++done} / ${selected.length} · ${hits.length} 本',
-          );
-      }
-    }
-
-    await Future.wait(List.generate(4, (_) => worker()));
+    int done = 0;
+    await s.searchSources(
+      q,
+      selected,
+      active: () => mounted && run == searchId,
+      onSource: (src, result, error) => setState(() {
+        if (error != null) failures.add("${src['name']} · $error");
+        hits.addAll(result.map((b) => {...b, 'sourceName': src['name']}));
+        searchMessage = '已搜索 ${++done} / ${selected.length} · ${hits.length} 本';
+      }),
+    );
     if (mounted && run == searchId) setState(() => searching = false);
   }
 
-  Future<bool> confirm(String message) async =>
+  Future<bool> confirm(String message, {String acceptLabel = '确认'}) async =>
       await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -410,7 +516,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('确认'),
+              child: Text(acceptLabel),
             ),
           ],
         ),
@@ -500,19 +606,26 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         ),
       );
       if (g == null) return;
-      final id = '${b["id"]}-${g["id"]}';
-      if (memberships.any((x) => x['id'] == id)) {
-        await s.send('DELETE', 'items/membership/$id');
+      final copies = s.shelfEditions(b).map((edition) => edition['id']).toSet();
+      final existing = memberships
+          .where((m) => m['group'] == g['id'] && copies.contains(m['book']))
+          .toList();
+      if (existing.isNotEmpty) {
+        for (final m in existing) {
+          await s.send('DELETE', 'items/membership/${m["id"]}');
+          memberships.remove(m);
+        }
       } else {
+        final id = copies.firstOrNull ?? b['id'];
         await s.putItem('membership', {
-          'id': id,
-          'book': b['id'],
+          'id': '$id-${g["id"]}',
+          'book': id,
           'group': g['id'],
         });
       }
     } else if (await confirm('$choice？')) {
       if (choice == '移出书架') {
-        await s.send('PUT', 'books/${b["id"]}/shelf', {'shelf': false});
+        await s.setShelved(b, false);
       } else {
         await s.send('DELETE', 'books/${b["id"]}');
       }
@@ -520,205 +633,306 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     await refresh();
   }
 
-  Widget libraryView(bool hist) {
-    if (hist && activity.isNotEmpty) {
-      return ListView(
-        children: [
-          for (final day in activity.map((e) => e['day']).toSet()) ...[
-            ListTile(
-              title: Text(
-                '$day',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              subtitle: Text(
-                '${activity.where((e) => e["day"] == day).map((e) => e["book"]).toSet().length} 本 · ${activity.where((e) => e["day"] == day).length} 章',
-              ),
-            ),
-            for (final e in activity.where((e) => e['day'] == day))
-              ListTile(
-                leading: const Icon(Icons.history),
-                title: Text(e['title']),
-                subtitle: Text(e['chapter'] ?? '原章节'),
-                onTap: () => action(() async {
-                  await read(await s.get('books/${e["book"]}'), e['chapterId']);
-                }),
-              ),
-          ],
-        ],
+  Future<void> toggleShelfLayout() async {
+    setState(() => s.state['shelfGrid'] = !shelfGrid);
+    await s.persist();
+  }
+
+  Future<void> handleShelfAction(String op) async {
+    switch (op) {
+      case '导入电子书':
+        await upload();
+      case '切换书架布局':
+        await toggleShelfLayout();
+      case '新建分组':
+        final name = await ask('分组名称');
+        if (name != null && name.isNotEmpty) {
+          await s.putItem('group', {'id': ReaderStore.eventId(), 'name': name});
+          await refresh();
+        }
+      case '同步书架':
+        await refresh();
+    }
+  }
+
+  Widget shelfHeader() {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final actionStyle = IconButton.styleFrom(
+      backgroundColor: colors.surfaceContainerLow,
+      foregroundColor: colors.onSurfaceVariant,
+      iconSize: 22,
+      tapTargetSize: MaterialTapTargetSize.padded,
+    );
+    void select(_ShelfTab section, {String? groupId}) => setState(() {
+      shelfTab = section;
+      shelfGroup = groupId;
+    });
+    Widget tabChip(_ShelfTab section) {
+      final selected = shelfTab == section;
+      return ChoiceChip(
+        label: Text(section.label),
+        selected: selected,
+        onSelected: (_) => select(section),
+        showCheckmark: false,
+        shape: const StadiumBorder(),
+        side: BorderSide.none,
+        backgroundColor: colors.surface,
+        selectedColor: colors.primary,
+        labelStyle: theme.textTheme.labelLarge?.copyWith(
+          color: selected ? colors.onPrimary : colors.onSurfaceVariant,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 10),
+        materialTapTargetSize: MaterialTapTargetSize.padded,
       );
     }
-    final indicators = {
-      for (final v in rows(library['indicators'])) v['id']: v,
-    };
-    final list = rows(library[hist ? 'history' : 'shelf']).where((b) {
-      final d = indicators[b['id']];
-      final seen = d?['stamp'] != null;
-      final done = seen && (d?['ord'] ?? -1) + 1 == (d?['total'] ?? 0);
-      return hist ||
-          switch (shelfTab) {
-            '全部' => true,
-            '在读' => seen && !done,
-            '未读' => !seen,
-            '已读' => done,
-            '本地' => b['origin'] == 'local',
-            _ => memberships.any(
-              (x) => x['book'] == b['id'] && x['group'] == shelfTab,
-            ),
-          };
-    }).toList();
-    final grid = !hist && s.state['shelfGrid'] == true;
-    Widget tile(Json b) {
-      final d = indicators[b['id']];
-      final cover = Stack(
-        clipBehavior: Clip.none,
-        children: [
-          SizedBox(
-            width: grid ? 90 : 56,
-            height: grid ? 120 : 77,
-            child: BookCover(
-              s,
-              b,
-              width: grid ? 90 : 56,
-              height: grid ? 120 : 77,
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppBar(
+          automaticallyImplyLeading: false,
+          centerTitle: false,
+          excludeHeaderSemantics: true,
+          backgroundColor: colors.surface,
+          scrolledUnderElevation: 0,
+          titleSpacing: 12,
+          title: SingleChildScrollView(
+            key: const PageStorageKey('shelf-tabs'),
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              spacing: 4,
+              children: [
+                for (final section in _ShelfTab.values) tabChip(section),
+              ],
             ),
           ),
-          if ((d?['total'] ?? 0) > 0)
-            Positioned(
-              right: -2,
-              top: 0,
-              child: Badge(
-                label: Text(
-                  '${(d!["total"] as int) - (d["ord"] == null ? 0 : (d["ord"] as int) + 1)}',
-                ),
+          actionsPadding: const EdgeInsetsDirectional.only(end: 12),
+          actions: [
+            IconButton(
+              tooltip: '搜书',
+              style: actionStyle,
+              onPressed: () => setState(() => page = _HomePage.search),
+              icon: const Icon(Icons.search_rounded),
+            ),
+            PopupMenuButton<String>(
+              tooltip: '书架菜单',
+              style: actionStyle,
+              icon: const Icon(Icons.more_horiz_rounded),
+              onSelected: (op) => action(() => handleShelfAction(op)),
+              itemBuilder: (_) => [
+                for (final op in ['导入电子书', '切换书架布局', '新建分组', '同步书架'])
+                  PopupMenuItem(value: op, child: Text(op)),
+                if (groups.isNotEmpty) const PopupMenuDivider(),
+                for (final g in groups)
+                  CheckedPopupMenuItem<String>(
+                    checked: shelfGroup == g['id'],
+                    onTap: () => select(
+                      _ShelfTab.books,
+                      groupId: shelfGroup == g['id'] ? null : g['id'],
+                    ),
+                    child: Text(g['name']),
+                  ),
+              ],
+            ),
+          ],
+        ),
+        Divider(height: 1, thickness: 0, color: colors.outlineVariant),
+      ],
+    );
+  }
+
+  Widget bookTile(
+    Json book, {
+    required VoidCallback onOpen,
+    VoidCallback? onMenu,
+    Json? progress,
+    String? historyChapter,
+  }) {
+    final grid = shelfGrid;
+    final cover = Stack(
+      clipBehavior: Clip.none,
+      children: [
+        BookCover(s, book, width: grid ? 90 : 56, height: grid ? 120 : 77),
+        if ((progress?['total'] ?? 0) > 0)
+          Positioned(
+            right: -2,
+            top: 0,
+            child: Badge(
+              label: Text(
+                '${(progress!["total"] as int) - ((progress["ord"] as int? ?? -1) + 1)}',
               ),
             ),
-        ],
-      );
-      final title = Text(
-        b['title'],
-        maxLines: grid ? 2 : 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(fontSize: grid ? 14 : 17, fontWeight: FontWeight.w600),
-      );
-      return GestureDetector(
-        onSecondaryTap: () => action(() => bookMenu(b)),
-        child: InkWell(
-          onTap: () => read(b),
-          onLongPress: () => action(() => bookMenu(b)),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: grid
-                ? Column(children: [cover, const SizedBox(height: 7), title])
-                : Row(
-                    children: [
-                      cover,
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            title,
-                            const SizedBox(height: 3),
+          ),
+      ],
+    );
+    final title = Text(
+      book['title'],
+      maxLines: grid ? 2 : 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(fontSize: grid ? 14 : 17, fontWeight: FontWeight.w600),
+    );
+    final chapter = historyChapter == null
+        ? null
+        : Text(
+            historyChapter,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall,
+          );
+    return GestureDetector(
+      onSecondaryTap: onMenu,
+      child: InkWell(
+        onTap: onOpen,
+        onLongPress: onMenu,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: grid
+              ? Column(
+                  children: [
+                    cover,
+                    const SizedBox(height: 7),
+                    title,
+                    if (chapter != null) ...[
+                      const SizedBox(height: 3),
+                      chapter,
+                    ],
+                  ],
+                )
+              : Row(
+                  children: [
+                    cover,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          title,
+                          const SizedBox(height: 3),
+                          Text(
+                            book['author'] == ''
+                                ? '未知作者'
+                                : book['author'] ?? '未知作者',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          if (chapter != null) chapter,
+                          if (progress != null) ...[
                             Text(
-                              b['author'] == ''
-                                  ? '未知作者'
-                                  : b['author'] ?? '未知作者',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                            Text(
-                              '进度：${d?["current"] ?? "尚未阅读"}',
+                              '进度：${progress["current"] ?? "尚未阅读"}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
-                              '最新：${d?["latest"] ?? "待获取目录"}',
+                              '最新：${progress["latest"] ?? "待获取目录"}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ],
-                        ),
+                        ],
                       ),
+                    ),
+                    if (onMenu != null)
                       IconButton(
                         tooltip: '书籍操作',
-                        onPressed: () => action(() => bookMenu(b)),
+                        onPressed: onMenu,
                         icon: const Icon(Icons.more_vert, size: 18),
                       ),
-                    ],
-                  ),
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        if (!hist)
-          SizedBox(
-            height: 46,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                for (final g in [
-                  for (final n in ['全部', '在读', '未读', '已读', '本地'])
-                    {'id': n, 'name': n},
-                  ...groups,
-                ])
-                  InkWell(
-                    onTap: () => setState(() => shelfTab = g['id']),
-                    child: Container(
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(
-                            color: shelfTab == g['id']
-                                ? Theme.of(context).colorScheme.primary
-                                : Colors.transparent,
-                            width: 3,
-                          ),
-                        ),
-                      ),
-                      child: Text(g['name']),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        const Divider(height: 1),
-        Expanded(
-          child: list.isEmpty
-              ? blank(
-                  Icons.menu_book_outlined,
-                  hist
-                      ? '还没有阅读记录'
-                      : shelfTab == '全部'
-                      ? '书架还是空的'
-                      : '这一组暂无书籍',
-                  hist
-                      ? null
-                      : TextButton(
-                          onPressed: () => action(upload),
-                          child: const Text('导入电子书'),
-                        ),
-                )
-              : grid
-              ? GridView.builder(
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 156,
-                    mainAxisExtent: 194,
-                  ),
-                  itemCount: list.length,
-                  itemBuilder: (_, i) => tile(list[i]),
-                )
-              : ListView.separated(
-                  itemCount: list.length,
-                  itemBuilder: (_, i) => tile(list[i]),
-                  separatorBuilder: (_, i) =>
-                      const Divider(height: 1, indent: 84),
+                  ],
                 ),
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget bookSliver(
+    int count,
+    IndexedWidgetBuilder itemBuilder, {
+    bool withChapter = false,
+  }) {
+    if (!shelfGrid) {
+      return SliverList.separated(
+        itemCount: count,
+        itemBuilder: itemBuilder,
+        separatorBuilder: (_, _) => const Divider(height: 1, indent: 84),
+      );
+    }
+    final scaler = MediaQuery.textScalerOf(context);
+    final titleHeight = 2 * 1.5 * scaler.scale(14);
+    final chapterHeight = withChapter ? 3 + 1.5 * scaler.scale(12) : 0.0;
+    return SliverGrid.builder(
+      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 156,
+        mainAxisExtent: 152 + titleHeight + chapterHeight,
+      ),
+      itemCount: count,
+      itemBuilder: itemBuilder,
+    );
+  }
+
+  Widget libraryView(_ShelfTab section) {
+    final books = s.books;
+    final Widget sliver;
+    if (section == _ShelfTab.history) {
+      final history = books.history;
+      if (history.isEmpty) {
+        return blank(Icons.menu_book_outlined, '还没有阅读记录');
+      }
+      sliver = bookSliver(history.length, (_, i) {
+        final entry = history[i];
+        final id = entry['book'];
+        return bookTile(
+          books.bookForVisit(entry),
+          historyChapter:
+              entry['chapter'] ?? (entry['chapterId'] == null ? null : '原章节'),
+          onOpen: () => action(() async {
+            final book = books.edition(id) ?? await s.get('books/$id');
+            if (mounted) await read(book, entry['chapterId']);
+          }),
+        );
+      }, withChapter: true);
+    } else {
+      final local = section == _ShelfTab.local;
+      final list = books.shelfBooks(
+        localOnly: local,
+        members: local || shelfGroup == null
+            ? null
+            : {
+                for (final m in memberships)
+                  if (m['group'] == shelfGroup) m['book'] as String,
+              },
+      );
+      if (list.isEmpty) {
+        return blank(
+          Icons.menu_book_outlined,
+          local
+              ? '还没有本地电子书'
+              : shelfGroup == null
+              ? '书架还是空的'
+              : '这一组暂无书籍',
+          TextButton(
+            onPressed: () => action(upload),
+            child: const Text('导入电子书'),
+          ),
+        );
+      }
+      sliver = bookSliver(list.length, (_, i) {
+        final book = list[i];
+        return bookTile(
+          book,
+          progress: books.progressFor(book),
+          onOpen: () => read(book),
+          onMenu: () => action(() => bookMenu(book)),
+        );
+      });
+    }
+    return CustomScrollView(
+      key: PageStorageKey((section, shelfGrid)),
+      slivers: [sliver],
     );
   }
 
@@ -756,17 +970,15 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
           Expanded(
             child: DropdownButton<String>(
               isExpanded: true,
-              value: sources.any((v) => v['id'] == sourceId) ? sourceId : '',
+              value: sourceId,
               items: [
                 const DropdownMenuItem(value: '', child: Text('全部启用的书源')),
-                ...sources
-                    .where((v) => v['enabled'] == 1 && v['issue'] == '')
-                    .map(
-                      (v) => DropdownMenuItem<String>(
-                        value: v['id'],
-                        child: Text(v['name'], overflow: TextOverflow.ellipsis),
-                      ),
-                    ),
+                ...searchableSources.map(
+                  (v) => DropdownMenuItem<String>(
+                    value: v['id'],
+                    child: Text(v['name'], overflow: TextOverflow.ellipsis),
+                  ),
+                ),
                 const DropdownMenuItem<String>(
                   value: 'tomato',
                   enabled: false,
@@ -819,32 +1031,74 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     ],
   );
   Widget sourceView() {
-    final list = sources
-        .where((v) => ('${v['name']} ${v['groupName']}').contains(filter))
-        .toList();
+    final list = filteredSources.toList();
+    final selection = sourceSelection;
+    final allSelected = list.isNotEmpty && selection?.length == list.length;
     return Column(
       children: [
         TextField(
-          onChanged: (v) => setState(() => filter = v),
+          readOnly: selection != null && working,
+          onChanged: (v) => setState(() {
+            filter = v;
+            retainVisibleSourceSelection();
+          }),
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.filter_list),
             labelText: '按书源名或分组筛选（${sources.length}）',
           ),
         ),
+        if (selection != null)
+          CheckboxListTile(
+            controlAffinity: ListTileControlAffinity.leading,
+            title: Text(filter.isEmpty ? '全选' : '全选筛选结果'),
+            tristate: true,
+            value: selection.isEmpty
+                ? false
+                : allSelected
+                ? true
+                : null,
+            onChanged: working || list.isEmpty
+                ? null
+                : (_) => setState(() {
+                    if (allSelected) {
+                      selection.clear();
+                    } else {
+                      selection.addAll(list.map((v) => v['id'] as String));
+                    }
+                  }),
+          ),
         Expanded(
           child: ListView.separated(
             itemCount: list.length,
             separatorBuilder: (_, i) => const Divider(height: 1),
             itemBuilder: (_, i) {
               final v = list[i];
+              final id = v['id'] as String;
+              final title = Text(v['name']);
+              final subtitle = Text(
+                [v['groupName'], v['issue']].where((s) => s != '').join(' · '),
+              );
+              if (selection != null) {
+                return CheckboxListTile(
+                  key: ValueKey(id),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: title,
+                  subtitle: subtitle,
+                  value: selection.contains(id),
+                  onChanged: working
+                      ? null
+                      : (checked) => setState(() {
+                          if (checked == true) {
+                            selection.add(id);
+                          } else {
+                            selection.remove(id);
+                          }
+                        }),
+                );
+              }
               return ListTile(
-                title: Text(v['name']),
-                subtitle: Text(
-                  [
-                    v['groupName'],
-                    v['issue'],
-                  ].where((s) => s != '').join(' · '),
-                ),
+                title: title,
+                subtitle: subtitle,
                 leading: Switch(
                   value: v['enabled'] == 1,
                   onChanged: (value) => action(() async {
@@ -855,16 +1109,16 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                   }),
                 ),
                 trailing: PopupMenuButton<String>(
-                  onSelected: (op) => action(() async {
-                    if (op == 'edit') {
-                      await editSource(v);
-                    } else if (op == 'test') {
-                      await testSource(v);
-                    } else if (await confirm('删除这个书源？')) {
-                      await s.send('DELETE', 'sources/${v['id']}');
-                      await refresh();
+                  onSelected: (op) {
+                    switch (op) {
+                      case 'edit':
+                        action(() => editSource(v));
+                      case 'test':
+                        action(() => testSource(v));
+                      case 'delete':
+                        confirmDeleteSources([id]);
                     }
-                  }),
+                  },
                   itemBuilder: (_) => const [
                     PopupMenuItem(value: 'edit', child: Text('编辑 JSON')),
                     PopupMenuItem(value: 'test', child: Text('测试书源')),
@@ -906,7 +1160,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
               : () => action(() async {
                   await s.connect(addr.text, secret.text);
                   await refresh();
-                  if (mounted) setState(() => tab = 0);
+                  if (mounted) setState(() => page = _HomePage.shelf);
+                  unawaited(s.flushReadingTime());
                   note('已连接个人书房');
                 }),
           icon: const Icon(Icons.link),
@@ -917,12 +1172,55 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         Padding(padding: const EdgeInsets.only(top: 18), child: Text(status)),
     ],
   );
+
+  Future<void> chooseAppTheme() async {
+    final choice = await showDialog<AppThemeMode>(
+      context: context,
+      builder: (dialog) => RadioGroup<AppThemeMode>(
+        groupValue: s.appTheme.value,
+        onChanged: (value) => Navigator.pop(dialog, value),
+        child: SimpleDialog(
+          title: const Text('外观主题'),
+          children: [
+            for (final mode in AppThemeMode.values)
+              RadioListTile(value: mode, title: Text(mode.label)),
+          ],
+        ),
+      ),
+    );
+    if (choice != null && mounted) await action(() => s.setAppTheme(choice));
+  }
+
   @override
   Widget build(BuildContext context) {
     final wide = MediaQuery.sizeOf(context).width >= 720;
-    final mine = tab >= 2;
-    final dest = mine ? 1 : 0;
-    void go(int i) => setState(() => tab = i);
+    final colors = Theme.of(context).colorScheme;
+    const sections = [_HomePage.shelf, _HomePage.stats, _HomePage.account];
+    final section = switch (page) {
+      _HomePage.search => _HomePage.shelf,
+      _HomePage.history ||
+      _HomePage.sources ||
+      _HomePage.connection => _HomePage.account,
+      _ => page,
+    };
+    final dest = sections.indexOf(section);
+    final home = page == section;
+    final selection = page == _HomePage.sources ? sourceSelection : null;
+    void go(_HomePage target) => setState(() {
+      if (page == _HomePage.sources && target != _HomePage.sources) {
+        sourceSelection = null;
+        filter = '';
+      }
+      page = target;
+    });
+    void back() {
+      if (selection != null) {
+        setState(() => sourceSelection = null);
+      } else {
+        go(section);
+      }
+    }
+
     const destinations = [
       NavigationDestination(
         icon: Icon(Icons.auto_stories_outlined),
@@ -930,25 +1228,32 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         label: '书架',
       ),
       NavigationDestination(
+        icon: Icon(Icons.bar_chart_outlined),
+        selectedIcon: Icon(Icons.bar_chart_rounded),
+        label: '阅读统计',
+      ),
+      NavigationDestination(
         icon: Icon(Icons.person_outline),
         selectedIcon: Icon(Icons.person),
         label: '我的',
       ),
     ];
-    final home = tab == 0 || tab == 5;
-    final title = ['书架', '搜书', '阅读记录', '书源管理', '连接与同步', '我的'][tab];
     return PopScope(
       canPop: home,
       onPopInvokedWithResult: (did, _) {
-        if (!did && !home) go(mine ? 5 : 0);
+        if (!did && !home) back();
       },
       child: Scaffold(
         bottomNavigationBar: wide || !home
             ? null
             : NavigationBar(
+                height: kMinInteractiveDimension,
+                labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
+                backgroundColor: colors.surfaceContainerLow,
+                elevation: 0,
                 destinations: destinations,
                 selectedIndex: dest,
-                onDestinationSelected: (i) => go(i == 0 ? 0 : 5),
+                onDestinationSelected: (i) => go(sections[i]),
               ),
         body: SafeArea(
           child: Row(
@@ -956,12 +1261,13 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
               if (wide)
                 NavigationRail(
                   selectedIndex: dest,
-                  onDestinationSelected: (i) => go(i == 0 ? 0 : 5),
+                  onDestinationSelected: (i) => go(sections[i]),
                   labelType: NavigationRailLabelType.all,
                   destinations: [
                     for (final d in destinations)
                       NavigationRailDestination(
                         icon: d.icon,
+                        selectedIcon: d.selectedIcon,
                         label: Text(d.label),
                       ),
                   ],
@@ -970,101 +1276,122 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
               Expanded(
                 child: Column(
                   children: [
-                    AppBar(
-                      automaticallyImplyLeading: false,
-                      leading: home
-                          ? null
-                          : BackButton(onPressed: () => go(mine ? 5 : 0)),
-                      title: Text(title),
-                      actions: [
-                        if (tab == 0)
-                          IconButton(
-                            tooltip: '搜书',
-                            onPressed: () => go(1),
-                            icon: const Icon(Icons.search),
-                          ),
-                        if (tab == 3)
-                          IconButton(
-                            tooltip: '导入书源',
-                            onPressed: () => action(editSource),
-                            icon: const Icon(Icons.add),
-                          ),
-                        if (tab == 0)
-                          PopupMenuButton<String>(
-                            tooltip: '书架菜单',
-                            onSelected: (op) => action(() async {
-                              switch (op) {
-                                case '导入电子书':
-                                  await upload();
-                                  break;
-                                case '切换书架布局':
-                                  setState(
-                                    () => s.state['shelfGrid'] =
-                                        s.state['shelfGrid'] != true,
-                                  );
-                                  await s.persist();
-                                  break;
-                                case '新建分组':
-                                  final n = await ask('分组名称');
-                                  if (n != null && n.isNotEmpty) {
-                                    await s.putItem('group', {
-                                      'id': ReaderStore.eventId(),
-                                      'name': n,
-                                    });
-                                    await refresh();
-                                  }
-                                  break;
-                                case '同步书架':
-                                  await refresh();
-                              }
-                            }),
-                            itemBuilder: (_) => [
-                              for (final op in [
-                                '导入电子书',
-                                '切换书架布局',
-                                '新建分组',
-                                '同步书架',
-                              ])
-                                PopupMenuItem(value: op, child: Text(op)),
-                            ],
-                          ),
-                      ],
-                    ),
+                    if (page == _HomePage.shelf)
+                      shelfHeader()
+                    else if (page != _HomePage.stats)
+                      AppBar(
+                        automaticallyImplyLeading: false,
+                        leading: selection != null
+                            ? IconButton(
+                                tooltip: '退出多选',
+                                onPressed: back,
+                                icon: const Icon(Icons.close),
+                              )
+                            : home
+                            ? null
+                            : BackButton(onPressed: back),
+                        title: Text(
+                          selection == null
+                              ? page.title
+                              : '已选 ${selection.length} 项',
+                        ),
+                        actions: [
+                          if (selection != null)
+                            TextButton.icon(
+                              style: TextButton.styleFrom(
+                                foregroundColor: colors.error,
+                              ),
+                              onPressed: selection.isEmpty || working
+                                  ? null
+                                  : () => confirmDeleteSources(selection),
+                              icon: const Icon(Icons.delete_outline),
+                              label: const Text('批量删除'),
+                            )
+                          else if (page == _HomePage.history)
+                            IconButton(
+                              tooltip: '切换书架布局',
+                              onPressed: () => action(toggleShelfLayout),
+                              icon: Icon(
+                                shelfGrid
+                                    ? Icons.view_list_outlined
+                                    : Icons.grid_view_outlined,
+                              ),
+                            )
+                          else if (page == _HomePage.sources) ...[
+                            TextButton(
+                              onPressed: sources.isEmpty || working
+                                  ? null
+                                  : () => setState(
+                                      () => sourceSelection = <String>{},
+                                    ),
+                              child: const Text('多选'),
+                            ),
+                            IconButton(
+                              tooltip: '导入书源',
+                              onPressed: () => action(editSource),
+                              icon: const Icon(Icons.add),
+                            ),
+                          ],
+                        ],
+                      ),
                     if (working) const LinearProgressIndicator(),
-                    if (status.isNotEmpty && tab != 4)
+                    if (status.isNotEmpty &&
+                        page != _HomePage.connection &&
+                        page != _HomePage.stats)
                       ListTile(
                         dense: true,
                         leading: const Icon(Icons.cloud_off_outlined),
                         title: const Text('当前离线，仍可阅读已缓存的章节'),
-                        onTap: () => go(4),
+                        onTap: () => go(_HomePage.connection),
                       ),
                     Expanded(
-                      child: tab == 0
-                          ? libraryView(false)
+                      child: page == _HomePage.shelf
+                          ? KeyedSubtree(
+                              key: PageStorageKey((shelfTab, shelfGroup)),
+                              child: libraryView(shelfTab),
+                            )
+                          : page == _HomePage.stats
+                          ? ReadingStatistics(s)
                           : Padding(
                               padding: EdgeInsets.symmetric(
                                 horizontal: wide ? 28 : 12,
                               ),
-                              child: switch (tab) {
-                                1 => searchView(),
-                                2 => libraryView(true),
-                                3 => sourceView(),
-                                4 => connection(),
+                              child: switch (page) {
+                                _HomePage.search => searchView(),
+                                _HomePage.history => libraryView(
+                                  _ShelfTab.history,
+                                ),
+                                _HomePage.sources => sourceView(),
+                                _HomePage.connection => connection(),
                                 _ => ListView(
                                   children: [
                                     for (final link in [
-                                      (2, Icons.history, '阅读记录'),
-                                      (3, Icons.library_books_outlined, '书源管理'),
-                                      (4, Icons.cloud_sync_outlined, '连接与同步'),
+                                      (_HomePage.history, Icons.history),
+                                      (
+                                        _HomePage.sources,
+                                        Icons.library_books_outlined,
+                                      ),
+                                      (
+                                        _HomePage.connection,
+                                        Icons.cloud_sync_outlined,
+                                      ),
                                     ])
                                       ListTile(
                                         leading: Icon(link.$2),
-                                        title: Text(link.$3),
+                                        title: Text(link.$1.title),
                                         trailing: const Icon(
                                           Icons.chevron_right,
                                         ),
                                         onTap: () => go(link.$1),
                                       ),
+                                    ListTile(
+                                      leading: const Icon(
+                                        Icons.contrast_outlined,
+                                      ),
+                                      title: const Text('外观主题'),
+                                      trailing: Text(s.appTheme.value.label),
+                                      onTap: chooseAppTheme,
+                                    ),
                                     ListTile(
                                       leading: const Icon(
                                         Icons.file_open_outlined,
@@ -1102,7 +1429,9 @@ class _BookDetailsState extends State<BookDetails> {
   bool showMarks = false;
   String chapterQuery = '';
   String error = '';
-  bool busy = true;
+  bool busy = true, updatingShelf = false;
+  bool get shelved =>
+      book['shelf'] == 1 || widget.store.shelfEditions(book).isNotEmpty;
   @override
   void initState() {
     super.initState();
@@ -1112,7 +1441,14 @@ class _BookDetailsState extends State<BookDetails> {
 
   Future<void> load([bool force = false]) async {
     try {
-      final list = await widget.store.toc(book['id'], force: force);
+      final mapping = book['origin'] == 'local'
+          ? null
+          : await widget.store.bookSourceMapping(book['id']);
+      final list = await widget.store.readingToc(
+        book['id'],
+        mapping,
+        force: force,
+      );
       final ms = await widget.store.items('mark', book['id']);
       Json b = book;
       try {
@@ -1135,12 +1471,17 @@ class _BookDetailsState extends State<BookDetails> {
     }
   }
 
-  void open([String? chapter]) => Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => ReaderPage(widget.store, book, selected: chapter),
-    ),
-  );
+  Future<void> open([String? chapter, Json? anchor]) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            ReaderPage(widget.store, book, selected: chapter, anchor: anchor),
+      ),
+    );
+    if (mounted) await load();
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('书籍详情')),
@@ -1164,23 +1505,24 @@ class _BookDetailsState extends State<BookDetails> {
                 child: const Text('继续阅读'),
               ),
               OutlinedButton(
-                onPressed: () async {
-                  try {
-                    final next = book['shelf'] != 1;
-                    await widget.store.send(
-                      'PUT',
-                      'books/${book['id']}/shelf',
-                      {'shelf': next},
-                    );
-                    if (mounted) setState(() => book['shelf'] = next ? 1 : 0);
-                  } catch (e) {
-                    if (context.mounted)
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text(e.toString())));
-                  }
-                },
-                child: Text(book['shelf'] == 1 ? '移出书架' : '加入书架'),
+                onPressed: updatingShelf
+                    ? null
+                    : () async {
+                        final next = !shelved;
+                        setState(() => updatingShelf = true);
+                        try {
+                          await widget.store.setShelved(book, next);
+                          if (mounted) book = {...book, 'shelf': next ? 1 : 0};
+                        } catch (e) {
+                          if (context.mounted)
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(e.toString())),
+                            );
+                        } finally {
+                          if (mounted) setState(() => updatingShelf = false);
+                        }
+                      },
+                child: Text(shelved ? '移出书架' : '加入书架'),
               ),
               IconButton(
                 tooltip: '刷新目录',
@@ -1225,17 +1567,7 @@ class _BookDetailsState extends State<BookDetails> {
                         ListTile(
                           title: Text(m['note'] == '' ? m['quote'] : m['note']),
                           subtitle: Text(m['kind']),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ReaderPage(
-                                widget.store,
-                                book,
-                                selected: m['chapter'],
-                                anchor: m,
-                              ),
-                            ),
-                          ),
+                          onTap: () => open(m['chapter'], m),
                         ),
                     ],
                   )

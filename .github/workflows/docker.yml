@@ -31,7 +31,12 @@ jobs:
           token="$(docker compose exec -T server cat /data/access-token.txt)"
           echo "::add-mask::$token"
           auth=(-H "Authorization: Bearer $token")
-          curl -fsS "${auth[@]}" "$base/api/sources" | jq -e 'length == 2'
+          sources="$(curl -fsS "${auth[@]}" "$base/api/sources")"
+          jq -e 'length == 2 and all(.[]; .raw == "")' <<< "$sources"
+          jq -r '.[].id' <<< "$sources" | while IFS= read -r id; do
+            curl -fsS -o /dev/null -X DELETE "${auth[@]}" "$base/api/sources/$id"
+          done
+          curl -fsS "${auth[@]}" "$base/api/sources" | jq -e '. == []'
           printf '第一章 初见\n走过山路。\n第二章 再见\n回到山中。\n' > "$RUNNER_TEMP/sample.txt"
           book="$(curl -fsS "${auth[@]}" -F "file=@$RUNNER_TEMP/sample.txt" "$base/api/upload" | jq -er '.id')"
           chapter="$(curl -fsS "${auth[@]}" "$base/api/books/$book/toc" | jq -er '.[0].id')"

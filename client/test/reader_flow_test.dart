@@ -42,13 +42,99 @@ class Fixture extends ReaderStore {
     String chapter,
     int p,
     int o,
-    String q,
-  ) async {
+    String q, {
+    Json? visit,
+  }) async {
     writes.add([int.parse(chapter.substring(1)), p, o]);
   }
 }
 
 void main() {
+  testWidgets('安卓小数页宽下双向跨章，导航栏收起后仍保留原文位置', (t) async {
+    t.view.devicePixelRatio = 2.625;
+    t.view.physicalSize = const Size(1080, 2400);
+    t.view.padding = const FakeViewPadding(top: 63, bottom: 63);
+    addTearDown(t.view.reset);
+    han = {'简体': {}, '繁体': {}};
+    final s = Fixture();
+    addTearDown(s.client.close);
+    s.map('appearance')['fontSize'] = 28.0;
+    await t.pumpWidget(
+      MaterialApp(
+        home: ReaderPage(s, {'id': 'one', 'title': '山路', 'origin': 'local'}),
+      ),
+    );
+    await t.pumpAndSettle();
+    expect(t.takeException(), isNull);
+    expect(find.text('章节 2'), findsWidgets);
+
+    Future<void> turn(double delta) async {
+      await t.dragFrom(const Offset(200, 400), Offset(delta, 0));
+      await t.pumpAndSettle();
+      await t.pump(const Duration(milliseconds: 400));
+    }
+
+    await turn(300);
+    expect(s.writes.last.first, 1);
+    await turn(-300);
+    expect(s.writes.last, [2, 0, 0]);
+    await turn(-300);
+    final anchor = s.writes.last.toList();
+    expect(anchor[1] + anchor[2], greaterThan(0));
+    t.view.padding = FakeViewPadding.zero;
+    await t.pumpAndSettle();
+    expect(t.takeException(), isNull);
+    await t.pumpWidget(const SizedBox());
+    await t.pumpAndSettle();
+    expect(s.writes.last, anchor);
+  });
+
+  testWidgets('信息栏使用垂直边距，关闭时正文用满阅读区域', (t) async {
+    t.view.devicePixelRatio = 1;
+    t.view.physicalSize = const Size(400, 800);
+    addTearDown(t.view.reset);
+    han = {'简体': {}, '繁体': {}};
+    final s = Fixture();
+    addTearDown(s.client.close);
+    final prefs = s.map('appearance')
+      ..['marginY'] = 0
+      ..['header'] = '无'
+      ..['footer'] = '无';
+    Future<void> render() async {
+      await t.pumpWidget(
+        MaterialApp(
+          home: ReaderPage(s, {'id': 'one', 'title': '山路', 'origin': 'local'}),
+        ),
+      );
+      await t.pumpAndSettle();
+    }
+
+    await render();
+    final pager = find.byType(PageView);
+    expect(t.getRect(pager).top, 0);
+    expect(t.getRect(pager).bottom, 800);
+    prefs['footer'] = '阅读进度';
+    await render();
+    final footer = find.textContaining(' 章   ·');
+    expect(t.getRect(pager).top, 0);
+    expect(t.getRect(pager).bottom, greaterThan(770));
+    expect(
+      t.getRect(footer).top,
+      greaterThanOrEqualTo(t.getRect(pager).bottom),
+    );
+
+    prefs['marginY'] = 40;
+    prefs['header'] = '章节';
+    await render();
+    expect(t.getRect(pager).top, 40);
+    expect(t.getRect(pager).bottom, 760);
+    prefs['mode'] = '滚动';
+    await render();
+    expect(t.getRect(find.byType(CustomScrollView)).bottom, 760);
+    await t.pumpWidget(const SizedBox());
+    await t.pumpAndSettle();
+  });
+
   testWidgets('整屏三区、双向跨章、重排和九种模式', (t) async {
     await t.view.resetFakeSize();
     han = {'简体': {}, '繁体': {}};

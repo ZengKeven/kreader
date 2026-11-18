@@ -11,8 +11,23 @@ import 'package:html/dom.dart' as dom;
 import 'package:http/http.dart' as http;
 import 'store.dart';
 import 'curl.dart';
+import 'reading_session.dart';
 part 'reader_settings.dart';
 part 'reader_tools.dart';
+part 'reader_source.dart';
+
+SystemUiOverlayStyle readerSystemBars(Brightness background) {
+  final dark = background == Brightness.dark;
+  return (dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
+      .copyWith(
+        statusBarColor: Colors.transparent,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: dark
+            ? Brightness.light
+            : Brightness.dark,
+        systemNavigationBarContrastEnforced: false,
+      );
+}
 
 class LinePiece {
   final int block, start, end;
@@ -235,12 +250,14 @@ class ReaderPage extends StatefulWidget {
   final Json book;
   final String? selected;
   final Json? anchor;
+  final bool resumeSelected;
   const ReaderPage(
     this.store,
     this.book, {
     super.key,
     this.selected,
     this.anchor,
+    this.resumeSelected = false,
   });
   @override
   State<ReaderPage> createState() => _ReaderState();
@@ -248,10 +265,20 @@ class ReaderPage extends StatefulWidget {
 
 typedef Leaf = ({int ch, int pg});
 
+bool _matchesChapter(Json chapter, Object? id) =>
+    id != null &&
+    (chapter['id'] == id ||
+        chapter['sourceChapter'] == id ||
+        chapter['originalChapter'] == id);
+
 class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
+  // Keep the current page stable when a preceding chapter finishes loading.
+  static const pageOrigin = 100000;
   ReaderStore get store => widget.store;
   String get book => widget.book['id'];
-  List<Json> toc = [], marks = [], rules = [], corrections = [], mappings = [];
+  List<Json> toc = [], marks = [], rules = [], corrections = [];
+  Json? sourceMapping;
+  String get readingBook => sourceMapping?['targetBook'] ?? book;
   final bodies = <int, List<Json>>{},
       layouts = <int, LayoutPages>{},
       failures = <int, String>{},
@@ -268,14 +295,29 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
       menus = false,
       modal = false,
       disposed = false,
+      leftReader = false,
+      hasDisplayedChapter = false,
       unlocated = false;
   static const hardware = MethodChannel('reader/hardware');
   void volume(bool on) {
     if (Platform.isAndroid) hardware.invokeMethod('volume', on);
   }
 
+  bool get hideSystemBars =>
+      Platform.isAndroid && pref('hideNavigationBar', false) == true;
+  bool systemBarsHidden = false;
+
+  void syncSystemBars() {
+    final hidden = !leftReader && hideSystemBars;
+    if (systemBarsHidden == hidden) return;
+    systemBarsHidden = hidden;
+    unawaited(hardware.invokeMethod<void>('setSystemBarsHidden', hidden));
+  }
+
   void updateReader(VoidCallback fn) {
-    if (mounted) setState(fn);
+    if (!mounted) return;
+    setState(fn);
+    _syncReadingTime();
   }
 
   double? seekPreview;
@@ -296,7 +338,11 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
       prefs[k] ?? store.state[k] ?? fallback;
   String get mode => pref('mode', store.state['paged'] == true ? '滑动' : '滚动');
   bool get paged => mode != '滚动';
-  bool get night => pref('night', false);
+  bool? get nightOverride =>
+      (prefs.containsKey('night') ? prefs['night'] : store.state['night'])
+          as bool?;
+  bool get night =>
+      nightOverride ?? Theme.of(context).brightness == Brightness.dark;
   double numv(String k, double d) => (pref(k, d) as num).toDouble();
   Color get paper => Color(
     pref(night ? 'nightPaper' : 'paper', night ? 0xff202321 : 0xfff8f5e9),
@@ -321,35 +367,79 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
         store.map('appearance')[key] = value;
       }
     });
+    if (key == 'hideNavigationBar') syncSystemBars();
     store.persist();
+  }
+
+  void refreshPageInfo() {
+    clockTimer?.cancel();
+    if (leftReader) return;
+    _readingSession.checkpoint();
+    const interval = Duration(seconds: 30);
+    final elapsed =
+        DateTime.now().millisecondsSinceEpoch % interval.inMilliseconds;
+    clockTimer = Timer(
+      interval - Duration(milliseconds: elapsed),
+      refreshPageInfo,
+    );
+    if (loading) return;
+    final fields = {
+      hideSystemBars ? '时间' : pref('header', '章节'),
+      pref('footer', '阅读进度'),
+    };
+    if (fields.contains('时间')) setState(() {});
+    if (Platform.isAndroid && fields.contains('电量')) {
+      hardware.invokeMethod<int>('battery').then((n) {
+        final level = n == null || n < 0 ? null : '$n%';
+        if (mounted && !leftReader && level != power)
+          setState(() => power = level);
+      });
+    }
+  }
+
+  late final _readingServer = store.namespace;
+  late final _readingSession = ReadingSession((start, end) {
+    unawaited(
+      store
+          .rememberReadingTime(widget.book, start, end, server: _readingServer)
+          .onError<FileSystemException>((_, _) => debugPrint('无法保存本机阅读时长')),
+    );
+  });
+  bool _routeVisible = false;
+  bool _foreground = false;
+
+  void _syncReadingTime() => _readingSession.setVisible(
+    _routeVisible &&
+        _foreground &&
+        !leftReader &&
+        hasDisplayedChapter &&
+        !loading &&
+        error == null &&
+        store.token.isNotEmpty &&
+        store.namespace == _readingServer,
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _routeVisible = ModalRoute.isCurrentOf(context) ?? true;
+    _syncReadingTime();
   }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    void tick() {
-      if (mounted &&
-          !loading &&
-          [
-            pref('header', '章节'),
-            pref('footer', '阅读进度'),
-          ].any((x) => x == '时间' || x == '电量')) {
-        if (Platform.isAndroid) {
-          hardware.invokeMethod<int>('battery').then((n) {
-            if (mounted)
-              setState(() => power = n == null || n < 0 ? null : '$n%');
-          });
-        } else {
-          setState(() {});
-        }
-      }
-    }
-
-    clockTimer = Timer.periodic(const Duration(seconds: 30), (_) => tick());
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    _foreground = lifecycle == null || lifecycle == AppLifecycleState.resumed;
+    refreshPageInfo();
+    syncSystemBars();
     if (Platform.isAndroid) {
       hardware.setMethodCallHandler((call) async {
-        if (call.method == 'turn' && !modal) turn(call.arguments as int);
+        if (call.method == 'turn' && !modal) {
+          _readingSession.activity();
+          turn(call.arguments as int);
+        }
       });
       volume(pref('volume', false));
     }
@@ -358,31 +448,45 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    _syncReadingTime();
     if (state != AppLifecycleState.resumed) {
       save();
       stopAuto();
-    } else if (!loading) {
-      resume();
+    } else if (!leftReader) {
+      refreshPageInfo();
+      if (!loading && !modal) guarded(resume);
     }
   }
 
   Future<void> resume() async {
     final before = (chapter, paragraph, offset);
+    if (widget.book['origin'] != 'local') {
+      final mapping = await store.bookSourceMapping(book);
+      if (!mounted || loading || modal) return;
+      if ((mapping?['targetBook'] ?? book) != readingBook) {
+        await start();
+        return;
+      }
+    }
     final pos = await store.position(book);
-    if (!mounted || loading || before != (chapter, paragraph, offset)) return;
+    if (!mounted || loading || modal || before != (chapter, paragraph, offset))
+      return;
     if (store.map('conflicts').containsKey(book)) {
       await start();
       return;
     }
     if (pos != null &&
-        (pos['chapterId'] != toc[chapter]['id'] ||
+        (chapter >= toc.length ||
+            !_matchesChapter(toc[chapter], pos['chapterId']) ||
             pos['paragraph'] != paragraph ||
             pos['offset'] != offset)) {
-      final i = toc.indexWhere((e) => e['id'] == pos['chapterId']);
+      final i = toc.indexWhere((e) => _matchesChapter(e, pos['chapterId']));
       if (i >= 0)
-        await open(i, pos);
+        await open(i, spot: pos);
       else {
         store.map('tocs').remove(book);
+        store.map('tocs').remove(readingBook);
         await start();
       }
     }
@@ -395,20 +499,47 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
     clockTimer?.cancel();
     disposed = true;
     WidgetsBinding.instance.removeObserver(this);
-    saveTimer?.cancel();
-    automatic?.cancel();
-    save();
+    finishReading();
     scroll?.dispose();
     pager?.dispose();
     super.dispose();
   }
 
+  void finishReading() {
+    if (leftReader) return;
+    leftReader = true;
+    _syncReadingTime();
+    syncSystemBars();
+    epoch++;
+    saveTimer?.cancel();
+    stopAuto();
+    unawaited(save(leaving: true));
+  }
+
   Future<void> start() async {
+    final tag = ++epoch;
+    saveTimer?.cancel();
+    if (!loading) updateReader(() => loading = true);
     try {
-      toc = await store.toc(book);
+      final mapping = widget.book['origin'] == 'local'
+          ? null
+          : await store.bookSourceMapping(book);
+      if (!mounted || tag != epoch) return;
+      sourceMapping = mapping;
+      await reloadTools();
+      if (han.isEmpty)
+        han = jsonDecode(
+          utf8.decode(
+            (await rootBundle.load('assets/han.json')).buffer.asUint8List(),
+          ),
+        );
+      await restoreFonts();
+      final chapters = await store.readingToc(book, mapping);
+      if (!mounted || tag != epoch) return;
+      useCatalog(mapping, chapters);
       if (toc.isEmpty) throw StateError('目录为空');
       var spot = await store.position(book);
-      if (!mounted) return;
+      if (!mounted || tag != epoch) return;
       final conflict = store.map('conflicts')[book];
       if (conflict != null) {
         final use = await showDialog<bool>(
@@ -433,70 +564,51 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
         await store.resolve(book, use);
         spot = await store.position(book);
       }
-      final all = await Future.wait([
-        store.items('mark', book),
-        store.items('rule'),
-        store.items('correction', book),
-        store.items('mapping', book),
-      ]);
-      marks = all[0];
-      rules = all[1];
-      corrections = all[2];
-      mappings = all[3];
-      if (han.isEmpty)
-        han = jsonDecode(
-          utf8.decode(
-            (await rootBundle.load('assets/han.json')).buffer.asUint8List(),
-          ),
-        );
-      await restoreFonts();
-      if (!mounted) return;
+      if (!mounted || tag != epoch) return;
       final chosen = widget.selected ?? spot?['chapterId'];
-      final i = toc.indexWhere((v) => v['id'] == chosen);
-      if (chosen != null && i < 0) {
-        unlocated = true;
-        message('原章节已变更，请从目录选择续读位置。');
+      final i = toc.indexWhere((v) => _matchesChapter(v, chosen));
+      final missing = chosen != null && i < 0;
+      if (missing) {
+        message('原章节已变更。翻页或选择章节后会保存新的阅读位置。');
       }
+      final resumeSpot =
+          i >= 0 &&
+          (widget.selected == null ||
+              (widget.resumeSelected &&
+                  _matchesChapter(toc[i], spot?['chapterId'])));
       await open(
         math.max(0, i),
-        widget.anchor ?? (widget.selected == null && i >= 0 ? spot : null),
+        spot: widget.anchor ?? (resumeSpot ? spot : null),
+        keepPreviousPosition: missing,
       );
     } catch (e) {
-      if (mounted)
-        setState(() {
+      if (mounted && tag == epoch)
+        updateReader(() {
           error = '$e';
           loading = false;
         });
     }
   }
 
-  String place(dynamic p) => p == null
-      ? '开头'
-      : '${toc.where((e) => e["id"] == p["chapterId"]).firstOrNull?["title"] ?? "原章节"} · 第 ${(p["paragraph"] ?? 0) + 1} 段';
-  Future<(String, String)> mappedChapter(int i) async {
-    final target =
-        mappings.where((m) => m['chapter'] == toc[i]['id']).firstOrNull ??
-        mappings.where((m) => m['chapter'] == '*').firstOrNull;
-    final id = target?['targetBook'] ?? book;
-    String cid = toc[i]['id'];
-    if (target != null) {
-      final other = await store.toc(id);
-      final matches = other
-          .where((t) => t['title'] == toc[i]['title'])
-          .toList();
-      if (target['targetChapter'] != null) {
-        cid = target['targetChapter'];
-      } else if (matches.length == 1) {
-        cid = matches.single['id'];
-      } else {
-        throw StateError('换源目录没有唯一同名章节，请在换源设置中指定本章');
-      }
-    }
-    return (id as String, cid);
+  void useCatalog(Json? mapping, List<Json> chapters) {
+    sourceMapping = mapping;
+    toc = chapters;
+    hasDisplayedChapter = false;
+    bodies.clear();
+    layouts.clear();
+    failures.clear();
+    fetching.clear();
+    geometry = '';
   }
 
+  String place(dynamic p) => p == null
+      ? '开头'
+      : '${toc.where((e) => _matchesChapter(e, p["chapterId"])).firstOrNull?["title"] ?? "原章节"} · 第 ${(p["paragraph"] ?? 0) + 1} 段';
+  (String, String) mappedChapter(int i) =>
+      (readingBook, toc[i]['sourceChapter'] ?? toc[i]['id']);
+
   Future<List<Json>> fetch(int i) async {
-    final (id, cid) = await mappedChapter(i);
+    final (id, cid) = mappedChapter(i);
     final item = await store.chapter(id, cid);
     final bs = rows(item['blocks']);
     if (bs.isEmpty) throw StateError('正文为空');
@@ -504,13 +616,17 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
     return bs;
   }
 
-  Future<void> open(int i, [Json? spot]) async {
-    if (i < 0 || i >= toc.length || !mounted) return;
+  Future<void> open(
+    int i, {
+    Json? spot,
+    bool keepPreviousPosition = false,
+  }) async {
+    if (i < 0 || i >= toc.length || !mounted || leftReader) return;
     saveTimer?.cancel();
     if (!loading) await save(localOnly: true);
-    if (!mounted) return;
+    if (!mounted || leftReader) return;
     final tag = ++epoch;
-    setState(() {
+    updateReader(() {
       loading = true;
       error = null;
     });
@@ -532,14 +648,16 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
           p = found.single;
           o = (bs[p]['text'] as String).indexOf(q);
         } else {
-          unlocated = true;
+          keepPreviousPosition = true;
           message('原文已更新，未自动覆盖旧位置，请选择新的续读位置。');
         }
       }
-      setState(() {
+      updateReader(() {
         chapter = i;
+        hasDisplayedChapter = true;
         paragraph = p;
         offset = o;
+        unlocated = keepPreviousPosition;
         bodies[i] = bs;
         loading = false;
         geometry = '';
@@ -549,7 +667,7 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
       if (!unlocated) save();
     } catch (e) {
       if (mounted && tag == epoch)
-        setState(() {
+        updateReader(() {
           error = '$e';
           loading = false;
         });
@@ -557,6 +675,7 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
   }
 
   void warm() {
+    final catalog = toc;
     if ((chapter - baseCh).abs() > 4) {
       geometry = '';
       final keep = chapter;
@@ -572,20 +691,24 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
         fetch(i)
             .then(
               (v) {
-                if (mounted) setState(() => bodies[i] = v);
+                if (mounted && identical(catalog, toc))
+                  setState(() => bodies[i] = v);
               },
               onError: (e) {
-                if (mounted) setState(() => failures[i] = '$e');
+                if (mounted && identical(catalog, toc))
+                  setState(() => failures[i] = '$e');
               },
             )
-            .whenComplete(() => fetching.remove(i));
+            .whenComplete(() {
+              if (identical(catalog, toc)) fetching.remove(i);
+            });
       }
     }
   }
 
-  Future<void> save({bool localOnly = false}) async {
-    if (loading || unlocated || bodies[chapter] == null || error != null)
-      return;
+  Future<void> save({bool localOnly = false, bool leaving = false}) async {
+    if (unlocated || !hasDisplayedChapter || bodies[chapter] == null) return;
+    if (!leaving && (leftReader || loading || error != null)) return;
     final text = bodies[chapter]![paragraph]['text'] as String;
     final o = offset.clamp(0, text.length);
     await store.remember(
@@ -594,6 +717,15 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
       paragraph,
       o,
       text.substring(o, math.min(text.length, o + 26)),
+      visit: leaving
+          ? {
+              'book': widget.book,
+              'current': toc[chapter]['title'],
+              'ord': chapter,
+              'total': toc.length,
+              'latest': toc.last['title'],
+            }
+          : null,
     );
     if (!localOnly) await store.flush();
   }
@@ -655,6 +787,7 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
       width = w;
       height = h;
       layouts.clear();
+      seekPreview = null;
       baseCh = chapter;
       basePg = page = layout(chapter).pageFor(paragraph, offset);
       final lines = layout(chapter).pages[page];
@@ -662,7 +795,7 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
           .where((l) => l.block == paragraph && l.end > offset)
           .firstOrNull;
       scroll = ScrollController(initialScrollOffset: ln?.y ?? 0);
-      pager = PageController(initialPage: 100000);
+      pager = PageController(initialPage: pageOrigin);
       scroll!.addListener(onScroll);
       renderId++;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -697,12 +830,13 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
 
   void move(int n, [double y = 0]) {
     final l = leaf(n);
-    if (l == null || disposed || !mounted) return;
+    if (l == null || disposed || leftReader || !mounted) return;
     final lines = layout(l.ch).pages[l.pg];
     final ln =
         lines.where((x) => x.y + x.height > y).firstOrNull ?? lines.lastOrNull;
     if (ln == null) return;
     final changed = chapter != l.ch || page != l.pg;
+    if (chapter != l.ch) seekPreview = null;
     chapter = l.ch;
     page = l.pg;
     paragraph = math.max(0, ln.block);
@@ -718,9 +852,9 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
     if (loading || error != null) return;
     unlocated = false;
     if (paged && pager?.hasClients == true) {
-      final now = (pager!.page ?? 100000).round();
+      final now = (pager!.page ?? pageOrigin).round();
       final to = now + d;
-      final n = (to - 100000) * stride;
+      final n = (to - pageOrigin) * stride;
       if (leaf(n) == null && !(spread && leaf(n + 1) != null)) {
         boundary(d);
         return;
@@ -917,7 +1051,7 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
       child: child,
       builder: (_, c) {
         double t = pager!.hasClients && pager!.position.hasContentDimensions
-            ? (pager!.page ?? 100000) - i
+            ? (pager!.page ?? pageOrigin.toDouble()) - i
             : 0;
         t = t.clamp(-1, 1);
         final w = width * stride;
@@ -946,7 +1080,7 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
     );
   }
 
-  Widget readingView() {
+  Widget readingView(BoxConstraints box) {
     if (loading) return const Center(child: CircularProgressIndicator());
     if (error != null)
       return Center(
@@ -955,6 +1089,11 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
           children: [
             Text(error!),
             TextButton(onPressed: start, child: const Text('重试')),
+            if (widget.book['origin'] != 'local')
+              TextButton(
+                onPressed: () => guarded(changeSource),
+                child: const Text('换源'),
+              ),
             TextButton(
               onPressed: () => Navigator.maybePop(context),
               child: const Text('返回'),
@@ -962,126 +1101,129 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
           ],
         ),
       );
-    return LayoutBuilder(
-      builder: (ctx, box) {
-        final mx = numv('marginX', 26).clamp(0.0, box.maxWidth / 4);
-        final my = numv('marginY', 14).clamp(0, box.maxHeight / 5);
-        final w = math.max<double>(
-          28.0,
-          math.min(box.maxWidth - mx * 2, spread ? 1520.0 : 820.0),
-        );
-        final h = math.max(48.0, box.maxHeight - 2 * my - 44);
-        setup(spread ? (w - 24) / 2 : w, h);
-        Widget spreadPage(int i) {
-          final n = (i - 100000) * stride;
-          final l = leaf(n), r = spread ? leaf(n + 1) : null;
-          return animation(
-            i,
-            ColoredBox(
-              color: pref('backgroundFile', '') == ''
-                  ? paper
-                  : Colors.transparent,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: l == null ? const SizedBox() : pageBody(l, false),
-                  ),
-                  if (spread) ...[
-                    const SizedBox(width: 24),
-                    Expanded(
-                      child: r == null ? const SizedBox() : pageBody(r, false),
-                    ),
-                  ],
-                ],
+    final mx = numv('marginX', 26).clamp(0.0, box.maxWidth / 4);
+    final my = numv('marginY', 14).clamp(0.0, box.maxHeight / 5);
+    final header = hideSystemBars ? '书名' : pref('header', '章节') as String;
+    final footer = pref('footer', '阅读进度') as String;
+    final infoStyle = TextStyle(
+      color: ink.withValues(alpha: .65),
+      fontSize: numv('infoSize', 12),
+      fontFamily: pref('infoFont', 'sans-serif'),
+      height: 1.25,
+    );
+    final infoLine =
+        MediaQuery.textScalerOf(context).scale(infoStyle.fontSize!) *
+        infoStyle.height!;
+    // The running header and footer share the page margins with the text.
+    double inset(String field) =>
+        field == '无' ? my : math.max(my, infoLine.ceilToDouble() + 8);
+    final topInset = inset(header), bottomInset = inset(footer);
+    final w = math.max<double>(
+      28.0,
+      math.min(box.maxWidth - mx * 2, spread ? 1520.0 : 820.0),
+    );
+    final h = box.maxHeight - topInset - bottomInset;
+    if (h <= 0) return const SizedBox.shrink();
+    setup(spread ? (w - 24) / 2 : w, h);
+    Widget spreadPage(int i) {
+      final n = (i - pageOrigin) * stride;
+      final l = leaf(n), r = spread ? leaf(n + 1) : null;
+      return animation(
+        i,
+        ColoredBox(
+          color: pref('backgroundFile', '') == '' ? paper : Colors.transparent,
+          child: Row(
+            children: [
+              Expanded(
+                child: l == null ? const SizedBox() : pageBody(l, false),
               ),
-            ),
-          );
-        }
-
-        Widget v;
-        if (paged) {
-          final min = 100000 - (before.length / stride).ceil(),
-              max = 100000 + ((after.length - 1) / stride).floor();
-          v = PageView.custom(
-            key: ValueKey('p$renderId'),
-            controller: pager,
-            physics: ReaderBounds(min, max),
-            onPageChanged: (i) {
-              final n = (i - 100000) * stride;
-              move(leaf(n) == null ? n + 1 : n);
-            },
-            childrenDelegate: SliverChildBuilderDelegate(
-              (_, i) => i < min ? const SizedBox() : spreadPage(i),
-              childCount: max + 1,
-            ),
-          );
-        } else {
-          v = CustomScrollView(
-            key: ValueKey('s$renderId'),
-            controller: scroll,
-            center: centerKey,
-            slivers: [
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (_, i) => pageBody(before[i], true),
-                  childCount: before.length,
-                ),
-              ),
-              SliverList(
-                key: centerKey,
-                delegate: SliverChildBuilderDelegate(
-                  (_, i) => pageBody(after[i], true),
-                  childCount: after.length,
-                ),
-              ),
-            ],
-          );
-        }
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTapUp: (d) {
-            final x = (3 * d.localPosition.dx / box.maxWidth).floor().clamp(
-                  0,
-                  2,
-                ),
-                y = (3 * d.localPosition.dy / box.maxHeight).floor().clamp(
-                  0,
-                  2,
-                );
-            tapAction((pref('zones', defaultZones) as List)[y * 3 + x]);
-          },
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: my.toDouble()),
-            child: Column(
-              children: [
-                info(true),
+              if (spread) ...[
+                const SizedBox(width: 24),
                 Expanded(
-                  child: Center(
-                    child: SizedBox(
-                      width: w,
-                      height: h,
-                      child: NotificationListener<UserScrollNotification>(
-                        onNotification: (n) {
-                          if (n.direction != ScrollDirection.idle)
-                            unlocated = false;
-                          return false;
-                        },
-                        child: v,
-                      ),
-                    ),
-                  ),
+                  child: r == null ? const SizedBox() : pageBody(r, false),
                 ),
-                info(false),
               ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    Widget v;
+    if (paged) {
+      final min = pageOrigin - (before.length / stride).ceil(),
+          max = pageOrigin + ((after.length - 1) / stride).floor();
+      v = PageView.custom(
+        key: ValueKey('p$renderId'),
+        controller: pager,
+        physics: ReaderBounds(min, max),
+        onPageChanged: (i) {
+          final n = (i - pageOrigin) * stride;
+          move(leaf(n) == null ? n + 1 : n);
+        },
+        childrenDelegate: _ReaderPageDelegate(
+          (_, i) => i < min ? const SizedBox() : spreadPage(i),
+          childCount: max + 1,
+          viewportWidth: math.min(w, box.maxWidth),
+        ),
+      );
+    } else {
+      v = CustomScrollView(
+        key: ValueKey('s$renderId'),
+        controller: scroll,
+        center: centerKey,
+        slivers: [
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (_, i) => pageBody(before[i], true),
+              childCount: before.length,
             ),
           ),
-        );
+          SliverList(
+            key: centerKey,
+            delegate: SliverChildBuilderDelegate(
+              (_, i) => pageBody(after[i], true),
+              childCount: after.length,
+            ),
+          ),
+        ],
+      );
+    }
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapUp: (d) {
+        final x = (3 * d.localPosition.dx / box.maxWidth).floor().clamp(0, 2),
+            y = (3 * d.localPosition.dy / box.maxHeight).floor().clamp(0, 2);
+        tapAction((pref('zones', defaultZones) as List)[y * 3 + x]);
       },
+      child: Column(
+        children: [
+          SizedBox(
+            height: topInset,
+            child: header == '无' ? null : info(true, header, infoStyle),
+          ),
+          SizedBox(
+            height: h,
+            width: w,
+            child: NotificationListener<UserScrollNotification>(
+              onNotification: (n) {
+                if (n.direction != ScrollDirection.idle) unlocated = false;
+                return false;
+              },
+              child: v,
+            ),
+          ),
+          SizedBox(
+            height: bottomInset,
+            child: footer == '无' ? null : info(false, footer, infoStyle),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget info(bool top) {
-    final format = pref(top ? 'header' : 'footer', top ? '章节' : '阅读进度');
+  Widget info(bool top, String format, TextStyle style) {
+    final bookAndTime = top && hideSystemBars;
     final c = toc[chapter];
     final text = switch (format) {
       '书名' => widget.book['title'],
@@ -1091,33 +1233,64 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
       '电量' => power ?? '电量不可用',
       '阅读进度' =>
         '${chapter + 1} / ${toc.length} 章   ·   ${(((chapter + page / (layouts[chapter]?.pages.length ?? 1)) / toc.length) * 100).toStringAsFixed(1)}%',
-      '无' => '',
       _ => '',
     };
-    return SizedBox(
-      height: 22,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 26),
-        child: Align(
-          alignment: top ? Alignment.centerLeft : Alignment.centerRight,
-          child: Text(
-            text,
-            maxLines: 1,
-            style: TextStyle(
-              color: ink.withValues(alpha: .65),
-              fontSize: numv('infoSize', 12),
-              fontFamily: pref('infoFont', 'sans-serif'),
-            ),
-          ),
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 26),
+      child: DefaultTextStyle.merge(
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: style,
+        child: bookAndTime
+            ? Row(
+                children: [
+                  Expanded(child: Text(text)),
+                  const SizedBox(width: 8),
+                  Text(TimeOfDay.now().format(context)),
+                ],
+              )
+            : Align(
+                alignment: top ? Alignment.centerLeft : Alignment.centerRight,
+                child: Text(text),
+              ),
       ),
+    );
+  }
+
+  Widget pageSlider() {
+    final pages = error == null ? layouts[chapter]?.pages : null;
+    final lastPage = (pages?.length ?? 1) - 1;
+    final value = (seekPreview ?? page.toDouble()).clamp(
+      0.0,
+      lastPage.toDouble(),
+    );
+    return Slider(
+      value: value,
+      max: lastPage.toDouble(),
+      divisions: lastPage > 0 ? lastPage : null,
+      label: '第 ${value.round() + 1} 页',
+      onChanged: lastPage == 0 ? null : (v) => setState(() => seekPreview = v),
+      onChangeEnd: lastPage == 0
+          ? null
+          : (v) {
+              if (loading || pages != layouts[chapter]?.pages) return;
+              final ln = pages![v.round()].firstOrNull;
+              if (ln == null) return;
+              setState(() {
+                paragraph = math.max(0, ln.block);
+                offset = ln.start;
+                unlocated = false;
+                seekPreview = null;
+                geometry = '';
+              });
+              save();
+            },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final bg = pref('backgroundFile', '');
-    return Theme(
+    final reader = Theme(
       data: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xff626484),
@@ -1127,246 +1300,222 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
       ),
       child: Scaffold(
         backgroundColor: paper,
-        body: SafeArea(
-          child: Focus(
-            autofocus: true,
-            onKeyEvent: (_, e) {
-              if (e is! KeyDownEvent || modal) return KeyEventResult.ignored;
-              final k = e.logicalKey;
-              if ([
-                    LogicalKeyboardKey.arrowRight,
-                    LogicalKeyboardKey.pageDown,
-                    LogicalKeyboardKey.space,
-                  ].contains(k) ||
-                  k.keyId == pref('nextKey', -1)) {
-                turn(1);
-                return KeyEventResult.handled;
-              }
-              if ([
-                    LogicalKeyboardKey.arrowLeft,
-                    LogicalKeyboardKey.pageUp,
-                  ].contains(k) ||
-                  k.keyId == pref('prevKey', -1)) {
-                turn(-1);
-                return KeyEventResult.handled;
-              }
-              if (k == LogicalKeyboardKey.escape && menus) {
-                setState(() => menus = false);
-                return KeyEventResult.handled;
-              }
-              return KeyEventResult.ignored;
-            },
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (bg != '')
-                  Image.file(
-                    File(bg),
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, e, s) => const SizedBox(),
-                  ),
-                readingView(),
-                if (numv('shade', 0) > 0)
-                  IgnorePointer(
-                    child: ColoredBox(
-                      color: Colors.black.withValues(alpha: numv('shade', 0)),
-                    ),
-                  ),
-                if (pref('eye', false))
-                  IgnorePointer(
-                    child: ColoredBox(
-                      color: Colors.amber.withValues(alpha: .10),
-                    ),
-                  ),
-                if (failures.containsKey(chapter + 1) ||
-                    failures.containsKey(chapter - 1))
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: TextButton.icon(
-                      onPressed: () {
-                        setState(() => failures.clear());
-                        warm();
-                      },
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('邻章加载失败 · 重试'),
-                    ),
-                  ),
-                if (menus) ...[
-                  Align(
-                    alignment: Alignment.topCenter,
-                    child: Material(
-                      elevation: 3,
-                      child: SafeArea(
-                        bottom: false,
-                        child: ListTile(
-                          leading: BackButton(
-                            onPressed: () => Navigator.maybePop(context),
-                          ),
-                          title: Text(
-                            widget.book['title'],
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          trailing: IconButton(
-                            tooltip: '章节工具',
-                            onPressed: toolsMenu,
-                            icon: const Icon(Icons.more_vert),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Material(
-                      elevation: 8,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(22),
-                      ),
-                      child: SafeArea(
-                        top: false,
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 32,
-                                height: 4,
-                                margin: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey,
-                                  borderRadius: BorderRadius.circular(3),
-                                ),
-                              ),
-                              if (toc.isNotEmpty)
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      tooltip: '上一章',
-                                      onPressed: chapter > 0
-                                          ? () => open(chapter - 1)
-                                          : null,
-                                      icon: const Icon(
-                                        Icons.skip_previous_outlined,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Slider(
-                                        value: seekPreview ?? page.toDouble(),
-                                        min: 0,
-                                        max: math
-                                            .max(
-                                              1,
-                                              (layouts[chapter]?.pages.length ??
-                                                      1) -
-                                                  1,
-                                            )
-                                            .toDouble(),
-                                        divisions: math.max(
-                                          1,
-                                          (layouts[chapter]?.pages.length ??
-                                                  1) -
-                                              1,
-                                        ),
-                                        label:
-                                            '第 ${(seekPreview ?? page).round() + 1} 页',
-                                        onChanged:
-                                            (layouts[chapter]?.pages.length ??
-                                                    1) <=
-                                                1
-                                            ? null
-                                            : (v) => setState(
-                                                () => seekPreview = v,
-                                              ),
-                                        onChangeEnd: (v) {
-                                          final ln = layout(
-                                            chapter,
-                                          ).pages[v.round()].firstOrNull;
-                                          if (ln != null) {
-                                            setState(() {
-                                              paragraph = math.max(0, ln.block);
-                                              offset = ln.start;
-                                              seekPreview = null;
-                                              geometry = '';
-                                            });
-                                            save();
-                                          }
-                                        },
-                                      ),
-                                    ),
-                                    IconButton(
-                                      tooltip: '下一章',
-                                      onPressed: chapter + 1 < toc.length
-                                          ? () => open(chapter + 1)
-                                          : null,
-                                      icon: const Icon(
-                                        Icons.skip_next_outlined,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceAround,
-                                children: [
-                                  for (final a
-                                      in [
-                                        (
-                                          Icons.format_list_bulleted,
-                                          '目录',
-                                          contents,
-                                        ),
-                                        (
-                                          night
-                                              ? Icons.light_mode_outlined
-                                              : Icons.dark_mode_outlined,
-                                          night ? '日间' : '夜间',
-                                          () => change('night', !night),
-                                        ),
-                                        (Icons.timer_outlined, '自动', auto),
-                                        (Icons.tune, '设置', settings),
-                                      ].where(
-                                        (a) =>
-                                            (pref('toolbar', [
-                                                      '目录',
-                                                      '日夜',
-                                                      '自动',
-                                                      '设置',
-                                                    ])
-                                                    as List)
-                                                .contains(
-                                                  ['夜间', '日间'].contains(a.$2)
-                                                      ? '日夜'
-                                                      : a.$2,
-                                                ),
-                                      ))
-                                    InkWell(
-                                      onTap: a.$3,
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 9,
-                                          vertical: 3,
-                                        ),
-                                        child: Column(
-                                          children: [Icon(a.$1), Text(a.$2)],
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
+        body: Listener(
+          onPointerDown: (_) => _readingSession.activity(),
+          onPointerMove: (_) => _readingSession.activity(),
+          onPointerSignal: (_) => _readingSession.activity(),
+          onPointerPanZoomUpdate: (_) => _readingSession.activity(),
+          child: SafeArea(
+            child: Focus(
+              autofocus: true,
+              onKeyEvent: (_, e) {
+                if (e is! KeyDownEvent || modal) return KeyEventResult.ignored;
+                _readingSession.activity();
+                final k = e.logicalKey;
+                if ([
+                      LogicalKeyboardKey.arrowRight,
+                      LogicalKeyboardKey.pageDown,
+                      LogicalKeyboardKey.space,
+                    ].contains(k) ||
+                    k.keyId == pref('nextKey', -1)) {
+                  turn(1);
+                  return KeyEventResult.handled;
+                }
+                if ([
+                      LogicalKeyboardKey.arrowLeft,
+                      LogicalKeyboardKey.pageUp,
+                    ].contains(k) ||
+                    k.keyId == pref('prevKey', -1)) {
+                  turn(-1);
+                  return KeyEventResult.handled;
+                }
+                if (k == LogicalKeyboardKey.escape && menus) {
+                  setState(() => menus = false);
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
+              },
+              child: LayoutBuilder(builder: buildViewport),
             ),
           ),
         ),
       ),
+    );
+    return PopScope<void>(
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) finishReading();
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: readerSystemBars(ThemeData.estimateBrightnessForColor(paper)),
+        child: reader,
+      ),
+    );
+  }
+
+  Widget buildViewport(BuildContext context, BoxConstraints box) {
+    final bg = pref('backgroundFile', '');
+    // Paginate the text before building the controls that use its page range.
+    final content = readingView(box);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (bg != '')
+          Image.file(
+            File(bg),
+            fit: BoxFit.cover,
+            errorBuilder: (_, e, s) => const SizedBox(),
+          ),
+        content,
+        if (numv('shade', 0) > 0)
+          IgnorePointer(
+            child: ColoredBox(
+              color: Colors.black.withValues(alpha: numv('shade', 0)),
+            ),
+          ),
+        if (pref('eye', false))
+          IgnorePointer(
+            child: ColoredBox(color: Colors.amber.withValues(alpha: .10)),
+          ),
+        if (failures.containsKey(chapter + 1) ||
+            failures.containsKey(chapter - 1))
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: TextButton.icon(
+              onPressed: () {
+                setState(() => failures.clear());
+                warm();
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('邻章加载失败 · 重试'),
+            ),
+          ),
+        if (menus && !loading) ...[
+          Align(
+            alignment: Alignment.topCenter,
+            child: Material(
+              elevation: 3,
+              child: SafeArea(
+                bottom: false,
+                child: ListTile(
+                  leading: BackButton(
+                    onPressed: () => Navigator.maybePop(context),
+                  ),
+                  title: Text(
+                    widget.book['title'],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (widget.book['origin'] != 'local')
+                        IconButton(
+                          tooltip: '换源',
+                          onPressed: () => guarded(changeSource),
+                          icon: const Icon(Icons.swap_horiz_rounded),
+                        ),
+                      downloadButton(),
+                      IconButton(
+                        tooltip: '章节工具',
+                        onPressed: toolsMenu,
+                        icon: const Icon(Icons.more_vert),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Material(
+              elevation: 8,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(22),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 4,
+                        margin: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.grey,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                      if (toc.isNotEmpty)
+                        Row(
+                          children: [
+                            IconButton(
+                              tooltip: '上一章',
+                              onPressed: chapter > 0
+                                  ? () => open(chapter - 1)
+                                  : null,
+                              icon: const Icon(Icons.skip_previous_outlined),
+                            ),
+                            Expanded(child: pageSlider()),
+                            IconButton(
+                              tooltip: '下一章',
+                              onPressed: chapter + 1 < toc.length
+                                  ? () => open(chapter + 1)
+                                  : null,
+                              icon: const Icon(Icons.skip_next_outlined),
+                            ),
+                          ],
+                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          for (final a
+                              in [
+                                (Icons.format_list_bulleted, '目录', contents),
+                                (
+                                  night
+                                      ? Icons.light_mode_outlined
+                                      : Icons.dark_mode_outlined,
+                                  night ? '日间' : '夜间',
+                                  () => change('night', !night),
+                                ),
+                                (Icons.timer_outlined, '自动', auto),
+                                (Icons.tune, '设置', settings),
+                              ].where(
+                                (a) =>
+                                    (pref('toolbar', ['目录', '日夜', '自动', '设置'])
+                                            as List)
+                                        .contains(
+                                          ['夜间', '日间'].contains(a.$2)
+                                              ? '日夜'
+                                              : a.$2,
+                                        ),
+                              ))
+                            InkWell(
+                              onTap: a.$3,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 9,
+                                  vertical: 3,
+                                ),
+                                child: Column(
+                                  children: [Icon(a.$1), Text(a.$2)],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -1382,6 +1531,26 @@ const defaultZones = [
   '菜单',
   '下一页',
 ];
+
+class _ReaderPageDelegate extends SliverChildBuilderDelegate {
+  _ReaderPageDelegate(
+    super.builder, {
+    required int childCount,
+    required this.viewportWidth,
+  }) : super(childCount: childCount);
+
+  final double viewportWidth;
+
+  // Every child fills the viewport. Extrapolating its width from the
+  // difference of two distant scroll offsets loses precision on fractional widths.
+  @override
+  double estimateMaxScrollOffset(
+    int firstIndex,
+    int lastIndex,
+    double leadingScrollOffset,
+    double trailingScrollOffset,
+  ) => childCount! * viewportWidth;
+}
 
 class ReaderBounds extends PageScrollPhysics {
   final int minPage, maxPage;

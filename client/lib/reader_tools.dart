@@ -38,7 +38,7 @@ extension ReaderTools on _ReaderState {
             'marks': marks
                 .where(
                   (m) =>
-                      m['chapter'] == toc[ch]['id'] &&
+                      _matchesChapter(toc[ch], m['chapter']) &&
                       m['paragraph'] == i &&
                       m['kind'] != '书签' &&
                       (m['original'] == null || m['original'] == raw['text']),
@@ -50,7 +50,7 @@ extension ReaderTools on _ReaderState {
           final fix = corrections
               .where(
                 (x) =>
-                    x['chapter'] == toc[ch]['id'] &&
+                    _matchesChapter(toc[ch], x['chapter']) &&
                     x['paragraph'] == i &&
                     x['original'] == text,
               )
@@ -91,14 +91,12 @@ extension ReaderTools on _ReaderState {
       store.items('mark', book),
       store.items('rule'),
       store.items('correction', book),
-      store.items('mapping', book),
     ]);
     if (mounted)
       updateReader(() {
         marks = all[0];
         rules = all[1];
         corrections = all[2];
-        mappings = all[3];
         geometry = '';
       });
   }
@@ -220,14 +218,13 @@ extension ReaderTools on _ReaderState {
 
   Future<void> jump(Json m) async {
     final i = toc.indexWhere(
-      (x) => x['id'] == (m['chapter'] ?? m['chapterId']),
+      (x) => _matchesChapter(x, m['chapter'] ?? m['chapterId']),
     );
     if (i < 0) {
       message('原章节已变更，请重新定位');
       return;
     }
-    unlocated = false;
-    await open(i, m);
+    await open(i, spot: m);
     if (mounted) updateReader(() => menus = false);
   }
 
@@ -388,9 +385,16 @@ extension ReaderTools on _ReaderState {
       }
     }
     if (cached) {
-      final ids = List<String>.from(store.state['cacheOrder'] ?? []).toSet();
-      for (final ch in toc.where((e) => ids.contains(e['id']))) {
-        final bs = rows((await store.chapter(book, ch['id']))['blocks']);
+      final catalog = toc;
+      final edition = readingBook;
+      for (final ch in catalog) {
+        final body = await store.cachedChapter(
+          edition,
+          ch['sourceChapter'] ?? ch['id'],
+        );
+        if (!mounted || leftReader || !identical(toc, catalog)) return;
+        if (body == null) continue;
+        final bs = rows(body['blocks']);
         for (int i = 0; i < bs.length; i++) {
           final t = bs[i]['text'] as String;
           final o = t.indexOf(q);
@@ -405,6 +409,7 @@ extension ReaderTools on _ReaderState {
         }
       }
     }
+    if (!mounted || leftReader) return;
     final m = await pickRow(
       cached ? '本机缓存的章节 · ${result.length} 段' : '全书 · ${result.length} 段',
       result,
@@ -418,7 +423,7 @@ extension ReaderTools on _ReaderState {
     final url = b['commentUrl'] ?? '';
     if (text.isEmpty && url != '') {
       try {
-        final (bid, cid) = await mappedChapter(ch);
+        final (bid, cid) = mappedChapter(ch);
         final data = await store.get('books/$bid/chapters/$cid/comments', {
           'paragraph': '$p',
         });
@@ -575,59 +580,19 @@ extension ReaderTools on _ReaderState {
     await reloadTools();
   }
 
-  Future<void> changeSource() async {
-    final op = await choose('换源范围', ['当前章节', '整本书', '恢复原书源']);
-    if (op == null) return;
-    if (op == '恢复原书源') {
-      for (final m in mappings) {
-        await store.send('DELETE', 'items/mapping/${m["id"]}');
-      }
-    } else {
-      final src = await pickRow(
-        '选择书源',
-        rows(
-          await store.get('sources'),
-        ).where((v) => v['enabled'] == 1 && v['issue'] == '').toList(),
-        (s) => s['name'],
-      );
-      if (src == null) return;
-      final found = rows(
-        await store.get('search', {
-          'source': src['id'],
-          'q': widget.book['title'],
-        }),
-      );
-      final b = await pickRow(
-        '选择同一本书',
-        found,
-        (s) => '${s["title"]} · ${s["author"]}',
-      );
-      if (b == null) return;
-      String? cid;
-      if (op == '当前章节') {
-        final ch = await pickRow(
-          '指定对应章节',
-          await store.toc(b['id']),
-          (s) => s['title'],
-        );
-        if (ch == null) return;
-        cid = ch['id'];
-      }
-      final key = op == '当前章节' ? toc[chapter]['id'] : '*';
-      await store.putItem('mapping', {
-        'id': '$book-$key',
-        'book': book,
-        'chapter': key,
-        'targetBook': b['id'],
-        if (cid != null) 'targetChapter': cid,
-      });
-    }
-    await reloadTools();
-    await reloadChapter(false);
-  }
-
-  Future<void> reloadChapter(bool remote) async {
+  Future<void> reloadChapter() async {
+    if (toc.isEmpty) return;
     final old = chapter;
+    final catalog = toc;
+    final (edition, chapterId) = mappedChapter(old);
+    await store.refreshChapter(edition, chapterId);
+    if (!mounted ||
+        leftReader ||
+        chapter != old ||
+        !identical(toc, catalog) ||
+        loading) {
+      return;
+    }
     final text = bodies[old]?[paragraph]['text'] as String? ?? '';
     final o = offset.clamp(0, text.length);
     final spot = {
@@ -635,14 +600,106 @@ extension ReaderTools on _ReaderState {
       'offset': o,
       'quote': text.substring(o, math.min(text.length, o + 26)),
     };
-    if (remote) {
-      final target = await mappedChapter(old);
-      await store.forgetChapter(target.$2);
-    }
     bodies.clear();
     layouts.clear();
     failures.clear();
-    await open(old, spot);
+    await open(old, spot: spot, keepPreviousPosition: unlocated);
+  }
+
+  Widget downloadButton() => ValueListenableBuilder<BookDownload?>(
+    valueListenable: store.activeDownload,
+    builder: (buttonContext, job, _) => IconButton(
+      tooltip: job == null ? '下载全书' : '下载进度',
+      icon: Icon(
+        job == null ? Icons.download_outlined : Icons.downloading_outlined,
+      ),
+      onPressed: toc.isEmpty && job == null
+          ? null
+          : () => guarded(() => downloadCurrentBook(buttonContext)),
+    ),
+  );
+
+  String downloadStatus(BookDownload job) {
+    if (!job.running && job.saved == job.total) {
+      return '全书已下载 · ${job.total} 章';
+    }
+    final failures = job.failed == 0 ? '' : ' · 失败 ${job.failed} 章';
+    return '已下载 ${job.saved}/${job.total} 章$failures';
+  }
+
+  Future<void> downloadCurrentBook(BuildContext buttonContext) async {
+    if (modal || loading) return;
+    final active = store.activeDownload.value;
+    if (active != null) {
+      modal = true;
+      stopAuto();
+      try {
+        await showDialog<void>(
+          context: buttonContext,
+          builder: (c) => ListenableBuilder(
+            listenable: active,
+            builder: (_, _) => AlertDialog(
+              title: Text(
+                '下载《${active.title}》',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  LinearProgressIndicator(value: active.saved / active.total),
+                  const SizedBox(height: 12),
+                  Text(downloadStatus(active)),
+                  if (active.stopping && active.saved < active.total)
+                    Text(active.running ? '正在停止下载…' : '已停止下载'),
+                  if (active.error != null)
+                    Text(
+                      active.error!,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
+              actions: [
+                if (active.running && !active.stopping)
+                  TextButton(onPressed: active.stop, child: const Text('停止下载')),
+                TextButton(
+                  onPressed: () => Navigator.pop(c),
+                  child: const Text('关闭'),
+                ),
+              ],
+            ),
+          ),
+        );
+      } finally {
+        modal = false;
+      }
+      return;
+    }
+    if (toc.isEmpty) return;
+    final edition = readingBook;
+    final server = store.namespace;
+    final result = await store.downloadBook(
+      edition,
+      widget.book['title'],
+      toc.map<String>((ch) => ch['sourceChapter'] ?? ch['id']),
+    );
+    if (!mounted ||
+        leftReader ||
+        ModalRoute.of(context)?.isCurrent == false ||
+        readingBook != edition ||
+        store.namespace != server) {
+      return;
+    }
+    final status = downloadStatus(result);
+    if (result.saved == result.total) {
+      message(status);
+    } else if (result.error != null) {
+      message('$status\n${result.error}。再次点击下载可重试。');
+    } else {
+      message('已停止下载 · $status');
+    }
   }
 
   Future<void> reparse() async {
@@ -675,7 +732,7 @@ extension ReaderTools on _ReaderState {
       '个人词典',
       '词典规则',
       '刷新本章',
-      if (widget.book['origin'] != 'local') ...['换源', '原文地址'],
+      if (widget.book['origin'] != 'local') '原文地址',
       if (widget.book['url'] == '.txt') 'TXT 重新分章',
     ]);
     if (op == null) return;
@@ -698,16 +755,15 @@ extension ReaderTools on _ReaderState {
           if (q != null && q.isNotEmpty) await dictionary(q);
           break;
         case '刷新本章':
-          await reloadChapter(true);
-          break;
-        case '换源':
-          await changeSource();
+          await reloadChapter();
           break;
         case '原文地址':
-          final result = await store.get(
-            'books/$book/chapters/${toc[chapter]["id"]}/url',
-          );
-          final url = result['url'] ?? widget.book['url'];
+          final (bid, cid) = mappedChapter(chapter);
+          final result = await store.get('books/$bid/chapters/$cid/url');
+          final url =
+              result['url'] ??
+              sourceMapping?['targetUrl'] ??
+              widget.book['url'];
           await Clipboard.setData(ClipboardData(text: url));
           message('已复制原文地址：$url');
           break;

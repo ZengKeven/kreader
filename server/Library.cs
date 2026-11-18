@@ -44,11 +44,16 @@ class Library
     {
         if (r.Paragraph < 0 || r.Offset < 0 || !Guid.TryParse(r.EventId, out _) || r.Quote.Length > 512) throw new InvalidDataException("阅读位置无效");
         using var db = Open(); using var tx = db.BeginTransaction(deferred: false);
-        if (db.ExecuteScalar<int>("SELECT count(*) FROM chapters WHERE Id=@ChapterId AND BookId=@id", new { id, r.ChapterId }, tx) == 0) throw new KeyNotFoundException("章节不存在");
         var old = db.QuerySingleOrDefault<Spot>("SELECT * FROM progress WHERE BookId=@id", new { id }, tx);
         var accepted = db.QuerySingleOrDefault<long?>("SELECT Version FROM history WHERE Id=@EventId AND BookId=@id", new { id, r.EventId }, tx);
         if (accepted != null) return Results.Ok(new { version = accepted, updated = old?.Updated });
         if ((old?.Version ?? 0) != r.Version) return Results.Conflict(old);
+        if (db.ExecuteScalar<int>("""
+            SELECT count(*) FROM chapters WHERE Id=@ChapterId AND (BookId=@id OR BookId=(
+                SELECT json_extract(Data,'$.targetBook') FROM reader_items
+                WHERE Kind='mapping' AND BookId=@id AND json_extract(Data,'$.chapter')='*'
+                ORDER BY Updated DESC LIMIT 1))
+            """, new { id, r.ChapterId }, tx) == 0) throw new KeyNotFoundException("章节不存在");
         var spot = new Spot(id, r.ChapterId, r.Paragraph, r.Offset, r.Quote, r.Version + 1, Now);
         db.Execute("INSERT OR REPLACE INTO progress VALUES(@BookId,@ChapterId,@Paragraph,@Offset,@Quote,@Version,@Updated)", spot, tx);
         db.Execute("INSERT INTO history VALUES(@EventId,@id,@ChapterId,@Version,@Updated)", new { r.EventId, id, r.ChapterId, spot.Version, spot.Updated }, tx);

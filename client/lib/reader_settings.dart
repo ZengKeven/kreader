@@ -284,6 +284,7 @@ extension ReaderSettings on _ReaderState {
                               store.map('perBook').remove(book);
                             }
                           });
+                          syncSystemBars();
                           store.persist();
                           update(() {});
                         },
@@ -317,7 +318,23 @@ extension ReaderSettings on _ReaderState {
                       select('标题对齐', 'titleAlign', '居左', ['居左', '居中', '居右']),
                     ]),
                     group('纸张与颜色', [
-                      sw('夜间阅读', 'night'),
+                      ListTile(
+                        title: const Text('阅读配色'),
+                        trailing: Text(switch (nightOverride) {
+                          true => '暗色',
+                          false => '亮色',
+                          null => '跟随应用',
+                        }),
+                        onTap: () async {
+                          final value = await choose('阅读配色', [
+                            '跟随应用',
+                            '亮色',
+                            '暗色',
+                          ]);
+                          if (value == null || !ctx.mounted) return;
+                          put('night', value == '跟随应用' ? null : value == '暗色');
+                        },
+                      ),
                       color('字体颜色', night ? 'nightInk' : 'ink', ink),
                       color('背景颜色', night ? 'nightPaper' : 'paper', paper),
                       sw('护眼色', 'eye'),
@@ -428,15 +445,23 @@ extension ReaderSettings on _ReaderState {
                   ],
                   [
                     group('页面信息', [
-                      select('顶栏', 'header', '章节', [
-                        '无',
-                        '书名',
-                        '章节',
-                        '页码',
-                        '阅读进度',
-                        '时间',
-                        if (Platform.isAndroid) '电量',
-                      ]),
+                      if (Platform.isAndroid)
+                        SwitchListTile(
+                          title: const Text('隐藏状态栏和导航栏'),
+                          subtitle: const Text('顶栏左侧显示书名，右侧显示时间'),
+                          value: hideSystemBars,
+                          onChanged: (v) => put('hideNavigationBar', v),
+                        ),
+                      if (!hideSystemBars)
+                        select('顶栏', 'header', '章节', [
+                          '无',
+                          '书名',
+                          '章节',
+                          '页码',
+                          '阅读进度',
+                          '时间',
+                          if (Platform.isAndroid) '电量',
+                        ]),
                       select('底栏', 'footer', '阅读进度', [
                         '无',
                         '书名',

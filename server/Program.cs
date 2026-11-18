@@ -42,6 +42,7 @@ app.Use(async (ctx, next) =>
     }
 });
 ReaderTools.Map(app,library,catalog);
+ReadingTime.Map(app, library);
 var covers = new BookCovers(library);
 app.MapGet("/api/books/{id}/cover", async (string id, CancellationToken ct) =>
 {
@@ -52,9 +53,31 @@ app.MapGet("/health", () => new { app = "个人书房", version = 2 });
 app.MapGet("/api/library", () =>
 {
     using var db = library.Open();
-    return new { indicators=db.Query("SELECT b.Id as id,c.Title as current,(SELECT Title FROM chapters WHERE BookId=b.Id ORDER BY Ord DESC LIMIT 1) as latest,(SELECT COUNT(*) FROM chapters WHERE BookId=b.Id) as total,c.Ord as ord,p.Updated as stamp FROM books b LEFT JOIN progress p ON p.BookId=b.Id LEFT JOIN chapters c ON c.Id=p.ChapterId WHERE b.Shelf=1"), shelf = db.Query<Book>("SELECT * FROM books WHERE Shelf=1 ORDER BY Updated DESC,Title"), history = db.Query<Book>("SELECT b.* FROM books b JOIN progress p ON p.BookId=b.Id ORDER BY p.Updated DESC") };
+    var indicators = db.Query("""
+        WITH editions AS (
+            SELECT b.Id, coalesce((SELECT json_extract(Data,'$.targetBook') FROM reader_items
+                WHERE Kind='mapping' AND BookId=b.Id AND json_extract(Data,'$.chapter')='*'
+                ORDER BY Updated DESC LIMIT 1), b.Id) AS edition FROM books b
+            WHERE b.Shelf=1 OR b.Id IN (SELECT BookId FROM progress)
+        )
+        SELECT s.Id as id, p.ChapterId as chapterId, c.Title as current, p.Updated as stamp,
+            (SELECT Title FROM chapters WHERE BookId=s.edition ORDER BY Ord DESC LIMIT 1) as latest,
+            (SELECT count(*) FROM chapters WHERE BookId=s.edition) as total,
+            CASE WHEN c.BookId=s.edition THEN c.Ord ELSE (
+                SELECT Ord FROM chapters WHERE BookId=s.edition AND trim(Title)=trim(c.Title) LIMIT 1
+            ) END as ord
+        FROM editions s LEFT JOIN progress p ON p.BookId=s.Id LEFT JOIN chapters c ON c.Id=p.ChapterId
+        """);
+    return new { indicators, shelf = db.Query<Book>("SELECT * FROM books WHERE Shelf=1 ORDER BY Updated DESC,Title"), history = db.Query<Book>("SELECT b.* FROM books b JOIN progress p ON p.BookId=b.Id ORDER BY p.Updated DESC") };
 });
-app.MapGet("/api/sources", () => { using var db = library.Open(); return db.Query<Source>("SELECT Id,Name,GroupName,Enabled,Issue,'' Raw FROM sources ORDER BY Name"); });
+app.MapGet("/api/sources", () =>
+{
+    using var db = library.Open();
+    return db.Query("""
+        SELECT Id AS id, Name AS name, GroupName AS groupName, Enabled AS enabled, Issue AS issue, '' AS raw
+        FROM sources ORDER BY Name
+        """);
+});
 app.MapGet("/api/sources/{id}", (string id) => library.Source(id));
 app.MapPost("/api/sources/import", async (JsonElement data, CancellationToken ct) =>
 {
