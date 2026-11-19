@@ -46,7 +46,7 @@ class BooksApp extends StatelessWidget {
   Widget build(BuildContext context) => ValueListenableBuilder<AppThemeMode>(
     valueListenable: store.appTheme,
     builder: (_, mode, _) => MaterialApp(
-      title: '个人书房',
+      title: '阅读',
       debugShowCheckedModeBanner: false,
       theme: _light,
       darkTheme: _dark,
@@ -1162,7 +1162,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                   await refresh();
                   if (mounted) setState(() => page = _HomePage.shelf);
                   unawaited(s.flushReadingTime());
-                  note('已连接个人书房');
+                  note('已连接服务端');
                 }),
           icon: const Icon(Icons.link),
           label: const Text('连接并同步'),

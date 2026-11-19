@@ -1,4 +1,7 @@
 import 'dart:io';
+import 'dart:ui' show DisplayFeature, DisplayFeatureState, DisplayFeatureType;
+import 'package:flutter/foundation.dart'
+    show debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:novel_reader/reader.dart';
@@ -47,6 +50,13 @@ class Fixture extends ReaderStore {
   }) async {
     writes.add([int.parse(chapter.substring(1)), p, o]);
   }
+}
+
+class _ShortParagraphs extends Fixture {
+  @override
+  Future<Json> chapter(String b, String id) async => {
+    'blocks': List.generate(24, (i) => {'text': '$id row $i', 'kind': 'p'}),
+  };
 }
 
 void main() {
@@ -131,6 +141,172 @@ void main() {
     prefs['mode'] = '滚动';
     await render();
     expect(t.getRect(find.byType(CustomScrollView)).bottom, 760);
+    await t.pumpWidget(const SizedBox());
+    await t.pumpAndSettle();
+  });
+
+  testWidgets('分页和滚动都显示首行缩进，单书可以关闭', (t) async {
+    t.view.devicePixelRatio = 1;
+    t.view.physicalSize = const Size(400, 800);
+    addTearDown(t.view.reset);
+    han = {'简体': {}, '繁体': {}};
+    final store = _ShortParagraphs();
+    addTearDown(store.client.close);
+    final prefs = store.map('appearance')
+      ..['font'] = 'Ahem'
+      ..['marginX'] = 0
+      ..['hideTitle'] = true;
+    Future<void> render() async {
+      await t.pumpWidget(
+        MaterialApp(
+          home: ReaderPage(store, {
+            'id': 'one',
+            'title': '山路',
+            'origin': 'local',
+          }),
+        ),
+      );
+      await t.pumpAndSettle();
+    }
+
+    final line = find.text('c2 row 0', findRichText: true);
+    await render();
+    expect(t.getTopLeft(line).dx, 40);
+    prefs['mode'] = '滚动';
+    await render();
+    expect(t.getTopLeft(line).dx, 40);
+
+    store.map('perBook')['one'] = {'indent': 0};
+    await render();
+    expect(t.getTopLeft(line).dx, 0);
+    await t.pumpWidget(const SizedBox());
+    await t.pumpAndSettle();
+  });
+
+  testWidgets('滚动正文在视口边缘隐藏半行，继续滚动可看到完整一行', (t) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    t.view.devicePixelRatio = 1;
+    const fontSize = 20.0, leading = 1.5;
+    final painter = TextPainter(
+      text: const TextSpan(
+        text: 'c2 row 0',
+        style: TextStyle(
+          fontFamily: 'Ahem',
+          fontSize: fontSize,
+          height: leading,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final lineHeight = painter.computeLineMetrics().single.height;
+    painter.dispose();
+    t.view.physicalSize = Size(400, 4.5 * lineHeight);
+    addTearDown(t.view.reset);
+    han = {'简体': {}, '繁体': {}};
+    final s = _ShortParagraphs();
+    addTearDown(s.client.close);
+    s.state['appearance'] = {
+      'mode': '滚动',
+      'font': 'Ahem',
+      'fontSize': fontSize,
+      'leading': leading,
+      'paraGap': 0,
+      'hideTitle': true,
+      'header': '无',
+      'footer': '无',
+      'marginX': 0,
+      'marginY': 0,
+    };
+    await t.pumpWidget(
+      MaterialApp(
+        home: ReaderPage(s, {'id': 'one', 'title': '山路', 'origin': 'local'}),
+      ),
+    );
+    await t.pumpAndSettle();
+
+    final view = find.byType(CustomScrollView);
+    final row = find.text('c2 row 4', findRichText: true);
+    final clip = find.ancestor(
+      of: view,
+      matching: find.byWidgetPredicate(
+        (w) => w is ClipRect && w.clipper != null,
+      ),
+    );
+    Rect paintRegion() => t
+        .widget<ClipRect>(clip)
+        .clipper!
+        .getClip(t.getSize(clip))
+        .shift(t.getTopLeft(clip));
+
+    expect(t.getRect(row).bottom, greaterThan(t.getRect(view).bottom));
+    expect(t.getRect(row).top, lessThan(t.getRect(view).bottom));
+    expect(paintRegion().bottom, closeTo(t.getRect(row).top, .1));
+
+    t.widget<CustomScrollView>(view).controller!.jumpTo(lineHeight / 2);
+    await t.pumpAndSettle();
+    expect(
+      paintRegion().bottom,
+      greaterThanOrEqualTo(t.getRect(row).bottom - .1),
+    );
+    expect(paintRegion().top, closeTo(lineHeight / 2, .1));
+    await t.pumpWidget(const SizedBox());
+    await t.pumpAndSettle();
+  });
+
+  testWidgets('Android 沉浸阅读在顶部安全区内显示书名和时间并避开开孔', (t) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    t.view.devicePixelRatio = 1;
+    t.view.physicalSize = const Size(400, 800);
+    t.view.padding = const FakeViewPadding(top: 36);
+    t.view.viewPadding = const FakeViewPadding(top: 36);
+    addTearDown(t.view.reset);
+    void cutout(Rect bounds) => t.view.displayFeatures = [
+      DisplayFeature(
+        bounds: bounds,
+        type: DisplayFeatureType.cutout,
+        state: DisplayFeatureState.unknown,
+      ),
+    ];
+
+    const middle = Rect.fromLTRB(160, 0, 240, 36);
+    cutout(middle);
+    han = {'简体': {}, '繁体': {}};
+    final s = Fixture();
+    addTearDown(s.client.close);
+    final prefs = s.map('appearance')..['hideNavigationBar'] = true;
+    Future<void> render() async {
+      await t.pumpWidget(
+        MaterialApp(
+          home: ReaderPage(s, {'id': 'one', 'title': '山路', 'origin': 'local'}),
+        ),
+      );
+      await t.pumpAndSettle();
+    }
+
+    final title = find.text('山路');
+    final time = find.textContaining(RegExp(r'\d{1,2}:\d{2}'));
+    final body = find.byType(PageView);
+    await render();
+    expect(t.getRect(title).right, lessThan(middle.left));
+    expect(t.getRect(time).left, greaterThan(middle.right));
+    expect(t.getRect(title).center.dy, closeTo(18, 1));
+    expect(t.getRect(time).center.dy, closeTo(18, 1));
+    expect(t.getTopLeft(body).dy, 36);
+
+    const corner = Rect.fromLTRB(0, 0, 76, 36);
+    cutout(corner);
+    await t.pumpAndSettle();
+    expect(t.getRect(title).left, greaterThan(corner.right));
+    expect(t.getRect(title).bottom, lessThan(36));
+    expect(t.getTopLeft(body).dy, 36);
+
+    prefs['hideNavigationBar'] = false;
+    await render();
+    expect(title, findsNothing);
+    expect(time, findsNothing);
+    expect(t.getTopLeft(body).dy, greaterThan(36));
     await t.pumpWidget(const SizedBox());
     await t.pumpAndSettle();
   });
@@ -225,6 +401,48 @@ void main() {
     expect(d.indices[d.value.indexOf('丁')], 3);
     d.replace('甲', (_) => '');
     expect(d.indices.first, 1);
+  });
+
+  test('首行使用缩进后的宽度，续行使用正文宽度并保留原文定位', () {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    const original = '😀ABCDEFGH';
+    final display = DisplayText(original)..replace('😀', (_) => '');
+    final layout = LayoutPages(
+      [
+        {'kind': 'heading', 'text': 'HEAD'},
+        {
+          'kind': 'p',
+          'text': original,
+          'display': display.value,
+          'map': display.indices,
+        },
+        {'kind': 'p', 'text': 'XY\nZABCD'},
+      ],
+      100,
+      40,
+      20,
+      1.5,
+      Colors.black,
+      {'font': 'Ahem', 'paraGap': 0, 'titleGap': 0},
+    );
+
+    final lines = layout.pages.expand((page) => page).toList();
+    expect(lines.map((line) => line.span!.toPlainText()), [
+      'HEAD',
+      'ABC',
+      'DEFGH',
+      'XY',
+      'ZABCD',
+    ]);
+    expect(lines.map((line) => line.indent), [0, 40, 0, 40, 0]);
+    expect(lines.map((line) => (line.block, line.start, line.end)), [
+      (0, 0, 4),
+      (1, 2, 5),
+      (1, 5, 10),
+      (2, 0, 2),
+      (2, 3, 8),
+    ]);
+    expect(layout.pages[layout.pageFor(1, 5)].single, lines[2]);
   });
 }
 

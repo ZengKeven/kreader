@@ -52,7 +52,7 @@ class _ReadingStatisticsState extends State<ReadingStatistics>
   Future<void> refresh() async {
     if (loading) return;
     if (store.token.isEmpty) {
-      setState(() => error = '请先在「我的」连接个人书房。');
+      setState(() => error = '请先在「我的」中连接服务端。');
       return;
     }
     setState(() {

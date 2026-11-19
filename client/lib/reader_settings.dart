@@ -299,7 +299,14 @@ extension ReaderSettings on _ReaderState {
                       step('字距', 'spacing', 0, -1, 8, .25),
                       step('行距', 'leading', 1.65, 1.0, 3, .1),
                       step('段距', 'paraGap', 12, 0, 56, 1),
-                      step('首行缩进（字）', 'indent', 0, 0, 4, 1),
+                      step(
+                        '首行缩进（字）',
+                        'indent',
+                        _defaultFirstLineIndent,
+                        0,
+                        4,
+                        1,
+                      ),
                       select('字体', 'font', 'serif', fonts),
                       ListTile(
                         title: const Text('导入 TTF / OTF 字体'),

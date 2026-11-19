@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' show DisplayFeatureType;
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'dart:convert';
 import 'dart:math' as math;
@@ -29,9 +31,11 @@ SystemUiOverlayStyle readerSystemBars(Brightness background) {
       );
 }
 
+const _defaultFirstLineIndent = 2.0;
+
 class LinePiece {
   final int block, start, end;
-  final double y, height;
+  final double y, height, indent;
   final InlineSpan? span;
   final String? image;
   LinePiece(
@@ -41,8 +45,9 @@ class LinePiece {
     this.y,
     this.height,
     this.span,
-    this.image,
-  );
+    this.image, {
+    this.indent = 0,
+  });
 }
 
 class LayoutPages {
@@ -63,16 +68,23 @@ class LayoutPages {
       int end,
       double h,
       InlineSpan? span,
-      String? image,
-    ) {
+      String? image, {
+      double indent = 0,
+    }) {
       if (used + h > height && pages.last.isNotEmpty) {
         pages.add([]);
         used = 0;
       }
-      pages.last.add(LinePiece(b, start, end, used, h, span, image));
+      pages.last.add(
+        LinePiece(b, start, end, used, h, span, image, indent: indent),
+      );
       used += h;
     }
 
+    final firstLineIndent =
+        ((prefs['indent'] as num? ?? _defaultFirstLineIndent) * size)
+            .clamp(0.0, math.max(0.0, width - size))
+            .toDouble();
     if (blocks.isNotEmpty &&
         blocks.first['kind'] != 'heading' &&
         prefs['hideTitle'] != true &&
@@ -108,6 +120,8 @@ class LayoutPages {
       if (heading && prefs['hideTitle'] == true) continue;
       final text = (block['display'] ?? block['text']) as String;
       if (text.isEmpty) continue;
+      final indices = (block['map'] as List?)?.cast<int>();
+      int original(int index) => indices?[index] ?? index;
       final style = TextStyle(
         fontFamily:
             (heading ? prefs['titleFont'] : null) ?? prefs['font'] ?? 'serif',
@@ -155,8 +169,6 @@ class LayoutPages {
       InlineSpan span(int from, int to) {
         final pieces = <TextSpan>[], bounds = <int>{from, to};
         final annotations = (block['marks'] as List? ?? []).cast<Json>();
-        int original(int x) =>
-            block['map'] == null ? x : (block['map'] as List)[x];
         for (final r in ranges) {
           if (r.start > from && r.start < to) bounds.add(r.start);
           if (r.end > from && r.end < to) bounds.add(r.end);
@@ -164,9 +176,7 @@ class LayoutPages {
         for (final m in annotations) {
           for (final x in [m['offset'], m['end']]) {
             if (x is! int) continue;
-            final n = block['map'] == null
-                ? x
-                : (block['map'] as List).indexWhere((o) => o >= x);
+            final n = indices == null ? x : indices.indexWhere((o) => o >= x);
             if (n > from && n < to) bounds.add(n);
           }
         }
@@ -197,37 +207,40 @@ class LayoutPages {
         return TextSpan(style: style, children: pieces);
       }
 
-      final painter =
-          TextPainter(
-            text: span(0, text.length),
-            textDirection: TextDirection.ltr,
-          )..layout(
-            maxWidth: math.max(
-              1,
-              width - (heading ? 0 : (prefs['indent'] ?? 0) * size),
-            ),
-          );
+      final painter = TextPainter(textDirection: TextDirection.ltr);
       if (heading) used += (prefs['titleGap'] ?? 6).toDouble();
-      final metrics = painter.computeLineMetrics();
-      for (final line in metrics) {
-        final pos = painter.getPositionForOffset(
-          Offset(line.left + 0.05, line.baseline - line.ascent / 2),
-        );
-        final range = painter.getLineBoundary(pos);
-        if (range.end > range.start)
+
+      int wrap(int from, {double indent = 0}) {
+        painter
+          ..text = span(from, text.length)
+          ..maxLines = indent > 0 ? 1 : null
+          ..layout(maxWidth: math.max(1, width - indent));
+        var next = from;
+        for (final line in painter.computeLineMetrics()) {
+          final pos = painter.getPositionForOffset(
+            Offset(line.left + 0.05, line.baseline - line.ascent / 2),
+          );
+          final range = painter.getLineBoundary(pos);
+          if (range.end <= range.start) continue;
+          final start = from + range.start;
+          next = from + range.end;
           add(
             b,
-            block['map'] == null
-                ? range.start
-                : (block['map'] as List)[range.start],
-            block['map'] == null
-                ? range.end
-                : (block['map'] as List)[range.end],
+            original(start),
+            original(next),
             line.height,
-            span(range.start, range.end),
+            span(start, next),
             null,
+            indent: indent,
           );
+        }
+        return next;
       }
+
+      final next = !heading && firstLineIndent > 0
+          ? wrap(0, indent: firstLineIndent)
+          : 0;
+      if (next < text.length) wrap(next);
       painter.dispose();
       used += heading
           ? (prefs['titleGap'] ?? 6).toDouble()
@@ -304,10 +317,12 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
   }
 
   bool get hideSystemBars =>
-      Platform.isAndroid && pref('hideNavigationBar', false) == true;
+      defaultTargetPlatform == TargetPlatform.android &&
+      pref('hideNavigationBar', false) == true;
   bool systemBarsHidden = false;
 
   void syncSystemBars() {
+    if (!Platform.isAndroid) return;
     final hidden = !leftReader && hideSystemBars;
     if (systemBarsHidden == hidden) return;
     systemBarsHidden = hidden;
@@ -739,7 +754,11 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
       size,
       numv('leading', 1.65),
       ink,
-      {...prefs, 'chapterTitle': toc[c]['title']},
+      {
+        ...prefs,
+        'indent': numv('indent', _defaultFirstLineIndent),
+        'chapterTitle': toc[c]['title'],
+      },
     ),
   );
   List<({int ch, int pg})> before = [], after = [];
@@ -820,6 +839,35 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
       }
     }
     return (0, 0);
+  }
+
+  Rect completeLinesClip(Size viewport) {
+    final full = Offset.zero & viewport;
+    final controller = scroll;
+    if (loading ||
+        leftReader ||
+        controller == null ||
+        !controller.hasClients ||
+        !controller.position.hasContentDimensions) {
+      return full;
+    }
+
+    double edge(double position, {required bool top}) {
+      final (index, y) = atY(controller.offset + position);
+      final page = leaf(index);
+      if (page == null) return position;
+      for (final line in layout(page.ch).pages[page.pg]) {
+        final end = line.y + line.height;
+        if (line.span != null && y > line.y + 1e-6 && y < end - 1e-6) {
+          return position + (top ? end : line.y) - y;
+        }
+      }
+      return position;
+    }
+
+    final top = edge(0, top: true);
+    final bottom = edge(viewport.height, top: false);
+    return top < bottom ? Rect.fromLTRB(0, top, viewport.width, bottom) : full;
   }
 
   void onScroll() {
@@ -980,11 +1028,7 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
                       : pref('align', '居左');
                   final text = ln.span != null
                       ? Container(
-                          padding: EdgeInsets.only(
-                            left: !heading && ln.start == 0
-                                ? numv('indent', 0) * size
-                                : 0,
-                          ),
+                          padding: EdgeInsets.only(left: ln.indent),
                           alignment: align == '居中'
                               ? Alignment.center
                               : align == '居右'
@@ -1080,7 +1124,7 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
     );
   }
 
-  Widget readingView(BoxConstraints box) {
+  Widget readingView(BuildContext viewportContext, BoxConstraints box) {
     if (loading) return const Center(child: CircularProgressIndicator());
     if (error != null)
       return Center(
@@ -1103,7 +1147,7 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
       );
     final mx = numv('marginX', 26).clamp(0.0, box.maxWidth / 4);
     final my = numv('marginY', 14).clamp(0.0, box.maxHeight / 5);
-    final header = hideSystemBars ? '书名' : pref('header', '章节') as String;
+    final header = pref('header', '章节') as String;
     final footer = pref('footer', '阅读进度') as String;
     final infoStyle = TextStyle(
       color: ink.withValues(alpha: .65),
@@ -1117,7 +1161,19 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
     // The running header and footer share the page margins with the text.
     double inset(String field) =>
         field == '无' ? my : math.max(my, infoLine.ceilToDouble() + 8);
-    final topInset = inset(header), bottomInset = inset(footer);
+    final immersive = hideSystemBars
+        ? immersiveHeader(
+            viewportContext,
+            box.maxWidth,
+            mx,
+            infoStyle,
+            infoLine.ceilToDouble() + 8,
+          )
+        : null;
+    final topInset = immersive == null
+        ? inset(header)
+        : math.max(my, immersive.$1);
+    final bottomInset = inset(footer);
     final w = math.max<double>(
       28.0,
       math.min(box.maxWidth - mx * 2, spread ? 1520.0 : 820.0),
@@ -1168,7 +1224,7 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
         ),
       );
     } else {
-      v = CustomScrollView(
+      final view = CustomScrollView(
         key: ValueKey('s$renderId'),
         controller: scroll,
         center: centerKey,
@@ -1188,6 +1244,10 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
           ),
         ],
       );
+      v = ClipRect(
+        clipper: _CompleteLinesClipper(scroll!, completeLinesClip),
+        child: view,
+      );
     }
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -1200,7 +1260,9 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
         children: [
           SizedBox(
             height: topInset,
-            child: header == '无' ? null : info(true, header, infoStyle),
+            child:
+                immersive?.$2 ??
+                (header == '无' ? null : info(true, header, infoStyle)),
           ),
           SizedBox(
             height: h,
@@ -1222,8 +1284,129 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
     );
   }
 
+  (double, Widget) immersiveHeader(
+    BuildContext viewportContext,
+    double width,
+    double margin,
+    TextStyle style,
+    double rowHeight,
+  ) {
+    final time = TimeOfDay.now().format(context);
+    final labelStyle = DefaultTextStyle.of(viewportContext).style.merge(style);
+    final painter = TextPainter(
+      text: TextSpan(text: time, style: labelStyle),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    final timeWidth = painter.width.ceilToDouble();
+    painter.dispose();
+
+    const gap = 8.0;
+    final safeLeft = MediaQuery.paddingOf(context).left;
+    final safeTop = MediaQuery.paddingOf(viewportContext).top;
+    var band = math.max(rowHeight, safeTop);
+    final right = width - margin;
+    final cutouts =
+        MediaQuery.displayFeaturesOf(viewportContext)
+            .where((feature) => feature.type == DisplayFeatureType.cutout)
+            .map((feature) => feature.bounds.shift(Offset(-safeLeft, 0)))
+            .where(
+              (rect) =>
+                  rect.top < band &&
+                  rect.bottom > 0 &&
+                  rect.right > margin &&
+                  rect.left < right,
+            )
+            .toList()
+          ..sort((a, b) => a.left.compareTo(b.left));
+
+    // The top safe inset can describe a cutout across an otherwise usable row.
+    final gaps = <(double, double)>[];
+    var left = margin;
+    for (final cutout in cutouts) {
+      final start = (cutout.left - gap / 2).clamp(margin, right);
+      if (start > left) gaps.add((left, start));
+      left = math.max(left, cutout.right + gap / 2);
+      band = math.max(band, cutout.bottom);
+    }
+    if (left < right) gaps.add((left, right));
+    final timeSlot = gaps
+        .where((slot) => slot.$2 - slot.$1 >= timeWidth)
+        .lastOrNull;
+    final timeLeft = timeSlot == null ? right : timeSlot.$2 - timeWidth;
+    final minTitle = MediaQuery.textScalerOf(context).scale(style.fontSize!);
+    final titleSlot = gaps
+        .where(
+          (slot) => math.min(slot.$2, timeLeft - gap) - slot.$1 >= minTitle,
+        )
+        .firstOrNull;
+
+    Widget label(String value) => Text(
+      value,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: labelStyle,
+    );
+    final title = widget.book['title'] as String;
+    if (timeSlot == null || titleSlot == null) {
+      // A wide cutout or a very small window can leave no room for both labels.
+      final top = cutouts.isEmpty ? safeTop : band;
+      return (
+        top + rowHeight,
+        Padding(
+          padding: EdgeInsets.fromLTRB(margin, top, margin, 0),
+          child: SizedBox(
+            height: rowHeight,
+            child: Row(
+              spacing: gap,
+              children: [
+                Expanded(child: label(title)),
+                Flexible(child: label(time)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return (
+      band,
+      Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(
+          width: width,
+          height: band,
+          child: Stack(
+            children: [
+              Positioned(
+                top: 0,
+                bottom: 0,
+                left: titleSlot.$1,
+                right: width - math.min(titleSlot.$2, timeLeft - gap),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: label(title),
+                ),
+              ),
+              Positioned(
+                top: 0,
+                bottom: 0,
+                left: timeLeft,
+                right: width - timeSlot.$2,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: label(time),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget info(bool top, String format, TextStyle style) {
-    final bookAndTime = top && hideSystemBars;
     final c = toc[chapter];
     final text = switch (format) {
       '书名' => widget.book['title'],
@@ -1241,18 +1424,10 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: style,
-        child: bookAndTime
-            ? Row(
-                children: [
-                  Expanded(child: Text(text)),
-                  const SizedBox(width: 8),
-                  Text(TimeOfDay.now().format(context)),
-                ],
-              )
-            : Align(
-                alignment: top ? Alignment.centerLeft : Alignment.centerRight,
-                child: Text(text),
-              ),
+        child: Align(
+          alignment: top ? Alignment.centerLeft : Alignment.centerRight,
+          child: Text(text),
+        ),
       ),
     );
   }
@@ -1306,6 +1481,7 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
           onPointerSignal: (_) => _readingSession.activity(),
           onPointerPanZoomUpdate: (_) => _readingSession.activity(),
           child: SafeArea(
+            top: !hideSystemBars,
             child: Focus(
               autofocus: true,
               onKeyEvent: (_, e) {
@@ -1355,7 +1531,7 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
   Widget buildViewport(BuildContext context, BoxConstraints box) {
     final bg = pref('backgroundFile', '');
     // Paginate the text before building the controls that use its page range.
-    final content = readingView(box);
+    final content = readingView(context, box);
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -1518,6 +1694,19 @@ class _ReaderState extends State<ReaderPage> with WidgetsBindingObserver {
       ],
     );
   }
+}
+
+class _CompleteLinesClipper extends CustomClipper<Rect> {
+  _CompleteLinesClipper(ScrollController controller, this.bounds)
+    : super(reclip: controller);
+
+  final Rect Function(Size) bounds;
+
+  @override
+  Rect getClip(Size size) => bounds(size);
+
+  @override
+  bool shouldReclip(_CompleteLinesClipper oldClipper) => true;
 }
 
 const defaultZones = [
